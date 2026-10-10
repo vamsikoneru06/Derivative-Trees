@@ -1,6 +1,7 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-export const NODE_R = 19;
+/** Node radius in tree units. Layout gaps in sequences.js are multiples of it. */
+export const NODE_R = 22;
 
 function make(tag, attrs = {}, parent = null) {
     const el = document.createElementNS(SVG_NS, tag);
@@ -10,6 +11,7 @@ function make(tag, attrs = {}, parent = null) {
 }
 
 const fmt = n => (Math.round(n * 100) / 100).toString();
+const easeOut = p => 1 - Math.pow(1 - p, 3);
 
 // Writes an attribute only when its value changed since the last write.
 function write(el, attr, value) {
@@ -34,128 +36,182 @@ class Handle {
 }
 
 /**
- * Tree node: shape by kind (circle = nonterminal, rounded square = terminal,
- * dashed circle = ε) so states never rely on colour alone.
- * Props: x, y, scale, opacity, ring (expanding pulse), done (expanded fill),
- * settle (terminal settled fill), glow (ambiguity highlight).
+ * Tree node. Kinds differ by shape and fill, not colour alone:
+ * nonterminal = filled disc (with a dashed ring while still open),
+ * terminal = outlined disc, ε = dashed outline.
+ *
+ * Props: x, y, scale, opacity,
+ *   open   dashed ring on a nonterminal that has not been expanded yet
+ *   act    being expanded: solid ring + accent fill
+ *   pulse  0..1 progress of the expanding ring that ripples outwards
+ *   fresh  terminal just created (accent tint)
+ *   burst  0..1 progress of the ring that pops when a child lands
+ *   ybar   0..1 progress of the yield (underline, shadow fades)
+ *   ghost  opacity of the dashed placeholder left behind during the yield
+ *   glow   ambiguity highlight
  */
 class NodeHandle extends Handle {
-    constructor(node, layer) {
-        super({ x: 0, y: 0, scale: 1, opacity: 1, ring: 0, done: 0, settle: 0, glow: 0 });
+    constructor(node, layers) {
+        super({
+            x: 0, y: 0, scale: 1, opacity: 1, open: 0, act: 0, pulse: 0, fresh: 0,
+            burst: 0, ybar: 0, ghost: 0, ghostX: 0, ghostY: 0, glow: 0,
+        });
         this.node = node;
-        const kind = node.kind === 'nonterminal' ? 'nt' : node.kind === 'terminal' ? 'term' : 'eps';
-        this.el = make('g', { class: `node node--${kind}`, 'data-id': node.id }, layer);
         const r = NODE_R;
+        const kind = node.kind === 'nonterminal' ? 'nt' : node.kind === 'terminal' ? 'term' : 'eps';
+        this.kind = kind;
 
-        this.glowEl = make('circle', { class: 'node__glow', r: r + 9, opacity: 0 }, this.el);
-        this.ringEl = make('circle', { class: 'node__ring', r: r + 4, opacity: 0 }, this.el);
-        if (kind === 'term') {
-            const box = { x: -r, y: -r, width: 2 * r, height: 2 * r, rx: 7 };
-            this.baseEl = make('rect', { class: 'node__base', ...box }, this.el);
-            this.fillEl = make('rect', { class: 'node__fill', ...box, opacity: 0 }, this.el);
+        this.ghostEl = make('circle', { class: 'node-ghost', r, opacity: 0 }, layers.ghost);
+        this.burstEl = make('circle', { class: 'node-burst', opacity: 0 }, layers.burst);
+
+        this.el = make('g', { class: `node node--${kind}`, 'data-id': node.id }, layers.nodes);
+        this.glowEl = make('circle', { class: 'node__glow', r: r + 10, opacity: 0 }, this.el);
+        this.shadowEl = make('ellipse', { class: 'node__shadow', cy: r + 6, rx: r * 0.78, ry: r * 0.17 }, this.el);
+        if (kind === 'nt') {
+            this.openEl = make('circle', { class: 'node__open', r: r + 6, opacity: 0 }, this.el);
+            this.pulseEl = make('circle', { class: 'node__pulse', r: r + 6, opacity: 0 }, this.el);
+            this.ringEl = make('circle', { class: 'node__ring', r: r + 6, opacity: 0 }, this.el);
+            make('circle', { class: 'node__base', r }, this.el);
+            this.overEl = make('circle', { class: 'node__over', r, opacity: 0 }, this.el);
+        } else if (kind === 'term') {
+            make('circle', { class: 'node__base', r }, this.el);
+            this.overEl = make('circle', { class: 'node__over', r, opacity: 0 }, this.el);
+            this.barEl = make('line', { class: 'node__bar', x1: -r * 0.55, x2: r * 0.55, y1: r + 10, y2: r + 10, opacity: 0 }, this.el);
         } else {
-            this.baseEl = make('circle', { class: 'node__base', r }, this.el);
-            this.fillEl = make('circle', { class: 'node__fill', r, opacity: 0 }, this.el);
+            make('circle', { class: 'node__base', r }, this.el);
         }
-        const label = make('text', { class: 'node__label', 'text-anchor': 'middle', dy: '0.35em' }, this.el);
-        label.textContent = node.symbol;
-        if (node.symbol.length > 2) label.setAttribute('textLength', 2 * r - 8);
+        this.label = make('text', {
+            class: 'node__label', 'text-anchor': 'middle', 'dominant-baseline': 'central', y: 1,
+            'font-size': node.symbol.length > 1 ? r * 0.68 : r * 0.82,
+        }, this.el);
+        this.label.textContent = node.symbol;
     }
 
     flush() {
         const v = this.v;
         write(this.el, 'transform', `translate(${fmt(v.x)} ${fmt(v.y)}) scale(${fmt(v.scale)})`);
         write(this.el, 'opacity', fmt(v.opacity));
-        write(this.ringEl, 'opacity', fmt(v.ring));
-        write(this.ringEl, 'r', fmt(NODE_R + 3 + 5 * v.ring));
-        write(this.fillEl, 'opacity', fmt(Math.max(v.done, v.settle)));
         write(this.glowEl, 'opacity', fmt(v.glow));
+        write(this.shadowEl, 'opacity', fmt(1 - v.ybar * 0.6));
+
+        if (this.kind === 'nt') {
+            write(this.openEl, 'opacity', fmt(v.open * (1 - v.act)));
+            write(this.ringEl, 'opacity', fmt(v.act));
+            write(this.overEl, 'opacity', fmt(v.act));
+            const p = v.pulse;
+            write(this.pulseEl, 'r', fmt(NODE_R + 6 + 16 * easeOut(p)));
+            write(this.pulseEl, 'opacity', fmt(p > 0 && p < 1 ? 1 - p : 0));
+            write(this.el, 'class', `node node--nt${v.act > 0.5 ? ' is-active' : ''}`);
+        } else if (this.kind === 'term') {
+            write(this.overEl, 'opacity', fmt(v.fresh * (1 - v.ybar)));
+            write(this.barEl, 'opacity', fmt(v.ybar));
+        }
+
+        const b = v.burst;
+        if (b > 0 && b < 1) {
+            write(this.burstEl, 'cx', fmt(v.x));
+            write(this.burstEl, 'cy', fmt(v.y));
+            write(this.burstEl, 'r', fmt(NODE_R + 4 + easeOut(b) * 18));
+            write(this.burstEl, 'opacity', fmt((1 - b) * 0.7));
+        } else {
+            write(this.burstEl, 'opacity', '0');
+        }
+
+        write(this.ghostEl, 'cx', fmt(v.ghostX));
+        write(this.ghostEl, 'cy', fmt(v.ghostY));
+        write(this.ghostEl, 'opacity', fmt(v.ghost));
     }
 }
 
-/** Edge from parent to child; follows both nodes. Props: draw (0..1), glow. */
+/**
+ * Edge from parent to child, trimmed to the node outlines; follows both nodes.
+ * Props: draw (0..1), active (accent colour + moving tip while drawing), fade, glow.
+ */
 class EdgeHandle extends Handle {
     constructor(from, to, layer) {
-        super({ draw: 0, glow: 0 });
+        super({ draw: 0, active: 0, fade: 0, glow: 0 });
         this.from = from;
         this.to = to;
         this.el = make('g', { class: 'edge' }, layer);
         this.glowEl = make('line', { class: 'edge__glow', opacity: 0 }, this.el);
         this.lineEl = make('line', { class: 'edge__line' }, this.el);
+        this.tipEl = make('circle', { class: 'edge__tip', r: 4, opacity: 0 }, this.el);
     }
 
     flush() {
         const a = this.from.v, b = this.to.v;
-        const len = Math.hypot(b.x - a.x, b.y - a.y);
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+        const sx = a.x + ux * (NODE_R + 2), sy = a.y + uy * (NODE_R + 2);
+        const ex = b.x - ux * (NODE_R + 2) * b.scale, ey = b.y - uy * (NODE_R + 2) * b.scale;
+        const l = Math.max(0, Math.hypot(ex - sx, ey - sy));
+        const d = this.v.draw;
+
         for (const line of [this.lineEl, this.glowEl]) {
-            write(line, 'x1', fmt(a.x));
-            write(line, 'y1', fmt(a.y));
-            write(line, 'x2', fmt(b.x));
-            write(line, 'y2', fmt(b.y));
+            write(line, 'x1', fmt(sx));
+            write(line, 'y1', fmt(sy));
+            write(line, 'x2', fmt(ex));
+            write(line, 'y2', fmt(ey));
         }
-        write(this.lineEl, 'stroke-dasharray', `${fmt(len)} ${fmt(len + 1)}`);
-        write(this.lineEl, 'stroke-dashoffset', fmt(len * (1 - this.v.draw)));
-        write(this.lineEl, 'opacity', this.v.draw > 0 ? '1' : '0');
-        write(this.glowEl, 'opacity', fmt(this.v.glow * this.v.draw));
+        write(this.lineEl, 'stroke-dasharray', `${fmt(l)} ${fmt(l + 1)}`);
+        write(this.lineEl, 'stroke-dashoffset', fmt(l * (1 - d)));
+        write(this.lineEl, 'opacity', d > 0 ? fmt(1 - this.v.fade * 0.5) : '0');
+        write(this.lineEl, 'class', `edge__line${this.v.active > 0.5 ? ' is-drawing' : ''}`);
+        write(this.glowEl, 'opacity', fmt(this.v.glow * (d > 0 ? 1 : 0)));
+
+        if (this.v.active > 0.5 && d > 0 && d < 1) {
+            write(this.tipEl, 'cx', fmt(sx + (ex - sx) * d));
+            write(this.tipEl, 'cy', fmt(sy + (ey - sy) * d));
+            write(this.tipEl, 'opacity', '1');
+        } else {
+            write(this.tipEl, 'opacity', '0');
+        }
     }
 }
 
-/** Production card "S → aSb" centred above a node. Props: opacity, rise (slide-up offset). */
+/**
+ * Production card "S → a S b" to the right of a node, tied to it by a dashed link.
+ * Props: opacity, slide (extra offset while it slides in), dashed (practice "S → ?").
+ */
 class CardHandle extends Handle {
     constructor(text, anchor, layer) {
-        super({ opacity: 0, rise: 0 });
+        super({ opacity: 0, slide: 0, dashed: 0 });
         this.anchor = anchor;
         this.el = make('g', { class: 'prod-card', opacity: 0 }, layer);
-        this.box = make('rect', { class: 'prod-card__box', rx: 8, height: 28, y: -14 }, this.el);
-        const label = make('text', { class: 'prod-card__text', 'text-anchor': 'middle', dy: '0.35em' }, this.el);
-        label.textContent = text;
+        this.link = make('line', { class: 'prod-card__link', y1: 21, y2: 21, x2: 0 }, this.el);
+        this.shadow = make('rect', { class: 'prod-card__shadow', y: 4, height: 42, rx: 11 }, this.el);
+        this.box = make('rect', { class: 'prod-card__box', height: 42, rx: 11 }, this.el);
+        const label = make('text', { class: 'prod-card__text', x: 15, y: 22, 'dominant-baseline': 'central' }, this.el);
+        const [lhs, rhs] = text.split(' → ');
+        make('tspan', { class: 'prod-card__lhs' }, label).textContent = lhs;
+        make('tspan', { class: 'prod-card__arrow' }, label).textContent = ' → ';
+        make('tspan', { class: 'prod-card__rhs' }, label).textContent = rhs;
         const measured = label.getComputedTextLength ? label.getComputedTextLength() : 0;
-        const width = (measured || text.length * 9) + 22;
-        this.box.setAttribute('width', width);
-        this.box.setAttribute('x', -width / 2);
+        this.width = (measured || text.length * 10) + 30;
+        this.box.setAttribute('width', this.width);
+        this.shadow.setAttribute('width', this.width);
     }
 
     flush() {
-        // Siblings share the node's row, so above the node is the free spot.
         const a = this.anchor.v;
-        const y = a.y - NODE_R - 22 + this.v.rise;
-        write(this.el, 'transform', `translate(${fmt(a.x)} ${fmt(y)})`);
+        const s = this.v.slide;
+        write(this.el, 'transform', `translate(${fmt(a.x + NODE_R + 30 + s)} ${fmt(a.y - 21)})`);
         write(this.el, 'opacity', fmt(this.v.opacity));
+        write(this.link, 'x1', fmt(-22 - s));
+        write(this.box, 'class', `prod-card__box${this.v.dashed > 0.5 ? ' is-pending' : ''}`);
     }
 }
 
-/** A symbol of the yield row. Props: x, y, opacity, scale. */
-class TokenHandle extends Handle {
-    constructor(text, layer) {
-        super({ x: 0, y: 0, opacity: 0, scale: 1 });
-        this.el = make('g', { class: 'yield-token', opacity: 0 }, layer);
-        const label = make('text', { 'text-anchor': 'middle', dy: '0.35em' }, this.el);
-        label.textContent = text;
+/** The camera: tweened viewBox corners x0, y0, x1, y1. */
+class CameraHandle extends Handle {
+    constructor(svg) {
+        super({ x0: -150, y0: -100, x1: 150, y1: 100 });
+        this.svg = svg;
     }
 
     flush() {
-        const v = this.v;
-        write(this.el, 'transform', `translate(${fmt(v.x)} ${fmt(v.y)}) scale(${fmt(v.scale)})`);
-        write(this.el, 'opacity', fmt(v.opacity));
-    }
-}
-
-/** Underline below the yield row. Props: draw (0..1). */
-class BarHandle extends Handle {
-    constructor(layer) {
-        super({ x1: 0, x2: 0, y: 0, draw: 0 });
-        this.el = make('line', { class: 'yield-bar', opacity: 0 }, layer);
-    }
-
-    flush() {
-        const v = this.v;
-        const mid = (v.x1 + v.x2) / 2;
-        const half = ((v.x2 - v.x1) / 2) * v.draw;
-        write(this.el, 'x1', fmt(mid - half));
-        write(this.el, 'x2', fmt(mid + half));
-        write(this.el, 'y1', fmt(v.y));
-        write(this.el, 'y2', fmt(v.y));
-        write(this.el, 'opacity', v.draw > 0 ? '1' : '0');
+        const { x0, y0, x1, y1 } = this.v;
+        write(this.svg, 'viewBox', `${fmt(x0)} ${fmt(y0)} ${fmt(x1 - x0)} ${fmt(y1 - y0)}`);
     }
 }
 
@@ -165,11 +221,26 @@ class BarHandle extends Handle {
  */
 export function createTreeView(svgEl) {
     svgEl.classList.add('tree-view');
-    const edgeLayer = make('g', { class: 'layer-edges' }, svgEl);
-    const nodeLayer = make('g', { class: 'layer-nodes' }, svgEl);
-    const overlayLayer = make('g', { class: 'layer-overlay' }, svgEl);
+    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    let layers;
+    let handles;
+    let camera;
 
-    let handles = new Map();
+    function reset() {
+        svgEl.replaceChildren();
+        layers = {
+            ghost: make('g', { class: 'layer-ghosts' }, svgEl),
+            edges: make('g', { class: 'layer-edges' }, svgEl),
+            burst: make('g', { class: 'layer-bursts' }, svgEl),
+            under: make('g', { class: 'layer-under' }, svgEl),
+            nodes: make('g', { class: 'layer-nodes' }, svgEl),
+            overlay: make('g', { class: 'layer-overlay' }, svgEl),
+        };
+        handles = new Map();
+        camera = new CameraHandle(svgEl);
+        handles.set('camera', camera);
+    }
+    reset();
 
     const get = (key, create) => {
         if (!handles.has(key)) handles.set(key, create());
@@ -179,25 +250,32 @@ export function createTreeView(svgEl) {
     return {
         svg: svgEl,
 
+        /** Layer drawn between edges and nodes, e.g. for the builder character. */
+        get underLayer() {
+            return layers.under;
+        },
+
+        get camera() {
+            return camera;
+        },
+
         ensureNode(node) {
-            return get(`n${node.id}`, () => new NodeHandle(node, nodeLayer));
+            return get(`n${node.id}`, () => new NodeHandle(node, layers));
         },
 
         ensureEdge(parent, child) {
             return get(`e${parent.id}-${child.id}`, () =>
-                new EdgeHandle(this.ensureNode(parent), this.ensureNode(child), edgeLayer));
+                new EdgeHandle(this.ensureNode(parent), this.ensureNode(child), layers.edges));
         },
 
         card(key, text, anchorNode) {
-            return get(`c${key}`, () => new CardHandle(text, this.ensureNode(anchorNode), overlayLayer));
+            return get(`c${key}`, () => new CardHandle(text, this.ensureNode(anchorNode), layers.overlay));
         },
 
-        token(key, text) {
-            return get(`t${key}`, () => new TokenHandle(text, overlayLayer));
-        },
-
-        bar(key) {
-            return get(`b${key}`, () => new BarHandle(overlayLayer));
+        /** Register any object with flush(); it is flushed every frame. */
+        attach(key, handle) {
+            handles.set(key, handle);
+            return handle;
         },
 
         el(id) {
@@ -205,22 +283,14 @@ export function createTreeView(svgEl) {
             return h ? h.el : null;
         },
 
-        /** Fit the drawing area to a box in tree coordinates. */
-        fit({ minX, maxX, minY, maxY }, pad = 40) {
-            const w = maxX - minX + 2 * pad;
-            const h = maxY - minY + 2 * pad;
-            svgEl.setAttribute('viewBox', `${fmt(minX - pad)} ${fmt(minY - pad)} ${fmt(w)} ${fmt(h)}`);
+        node(id) {
+            return handles.get(`n${id}`) || null;
         },
 
         flush() {
             for (const h of handles.values()) h.flush();
         },
 
-        clear() {
-            edgeLayer.replaceChildren();
-            nodeLayer.replaceChildren();
-            overlayLayer.replaceChildren();
-            handles = new Map();
-        },
+        clear: reset,
     };
 }

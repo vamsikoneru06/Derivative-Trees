@@ -25,6 +25,8 @@ export class Timeline {
         this._raf = 0;
         this._lastFrame = 0;
         this._lastStep = null;
+        this._dir = 1;
+        this._rate = 1;
     }
 
     add(tw) {
@@ -122,21 +124,28 @@ export class Timeline {
     }
 
     play() {
-        if (this.playing) return;
+        if (this.playing && this._dir === 1 && this._stopAt === null) return;
         if (this.time >= this.duration) this.seek(0);
         this._stopAt = null;
-        this._start();
+        this._dir = 1;
+        this._rate = 1;
+        if (!this.playing) this._start();
     }
 
-    /** Play until time ms, then pause there. */
-    playTo(ms) {
-        const target = Math.min(ms, this.duration);
-        if (target <= this.time) {
+    /**
+     * Play towards time ms, forwards or backwards, then pause there.
+     * `rate` multiplies the speed, e.g. to rewind quickly.
+     */
+    playTo(ms, { rate = 1 } = {}) {
+        const target = Math.min(Math.max(ms, 0), this.duration);
+        if (target === this.time) {
             this.pause();
             this.seek(target);
             return;
         }
         this._stopAt = target;
+        this._dir = target > this.time ? 1 : -1;
+        this._rate = rate;
         if (!this.playing) this._start();
     }
 
@@ -160,10 +169,10 @@ export class Timeline {
             if (!this.playing) return;
             const dt = Math.max(0, now - this._lastFrame);
             this._lastFrame = now;
-            let t = this.time + dt * this.speed;
+            const t = this.time + this._dir * dt * this.speed * this._rate;
 
             const stop = this._stopAt ?? this.duration;
-            if (t >= stop) {
+            if (this._dir > 0 ? t >= stop : t <= stop) {
                 this.seek(stop);
                 this._stopAt = null;
                 this.pause();
