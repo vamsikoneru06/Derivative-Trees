@@ -140,6 +140,9 @@
                         (equivalently, two different leftmost derivations).</p>
                     <p>Under <code>E → E + E | E * E | id</code>, the string <code>id + id * id</code> can be grouped as
                         <code>id + (id * id)</code> or as <code>(id + id) * id</code>. The highlighted nodes are where the trees differ.</p>
+                    <p>Ambiguity can hide in small places. Under <code>S → (S) | SS | ε</code>, even <code>()</code> has
+                        two trees: <code>S ⇒ (S) ⇒ ()</code>, and <code>S ⇒ SS ⇒ S ⇒ (S) ⇒ ()</code>, where the first
+                        <code>S</code> becomes <code>ε</code>. Since <code>S</code> can derive itself, there are infinitely many trees.</p>
                     <p>There is no general algorithm that decides whether a CFG is ambiguous. A search can find two trees
                         for a particular string, but not finding them does not prove the grammar is unambiguous.</p>
                     <p><a href="ambiguity.html">Try the ambiguity explorer →</a></p>
