@@ -25,7 +25,7 @@ export function prefersReducedMotion() {
  * With reduced motion every tween has duration 0 but steps keep their
  * spacing, so playing and stepping still show every state.
  *
- * @param derivation  { steps: [{ lhs, rhs }] } — only used for card labels
+ * @param derivation  { steps } — only its length is used; may be null
  * @param root        TreeNode whose expandedAtStep matches the derivation
  * @param view        createTreeView(...) result
  * @param opts        { timeline, offset, yield, diffIds, reducedMotion, layout }
@@ -34,13 +34,15 @@ export function buildSequence(derivation, root, view, opts = {}) {
     const tl = opts.timeline ?? new Timeline();
     const reduce = opts.reducedMotion ?? prefersReducedMotion();
     const offset = opts.offset ?? 0;
-    const stepCount = derivation.steps.length;
+    const nodes = preorder(root);
+    const byId = new Map(nodes.map(n => [n.id, n]));
+    const stepCount = derivation
+        ? derivation.steps.length
+        : Math.max(0, ...nodes.map(n => n.expandedAtStep ?? 0));
 
     const add = (target, prop, from, to, start, duration, ease = linear) =>
         tl.add(tween(target, prop, from, to, offset + start, reduce ? 0 : duration, ease));
 
-    const nodes = preorder(root);
-    const byId = new Map(nodes.map(n => [n.id, n]));
     const expandedAt = new Map(nodes.filter(n => n.expandedAtStep !== null).map(n => [n.expandedAtStep, n]));
     const layouts = [];
     for (let k = 0; k <= stepCount; k++) layouts.push(layoutTree(root, k, opts.layout));
@@ -81,10 +83,8 @@ export function buildSequence(derivation, root, view, opts = {}) {
         add(parentH, 'done', 0, 1, t0 + 250, 300);
         add(parentH, 'ring', 1, 0, t0 + 800, 150);
 
-        // A3: production card.
-        const step = derivation.steps[k - 1];
-        const rhsText = step.rhs.length === 0 ? 'ε' : step.rhs.join(step.rhs.some(s => s.length > 1) ? ' ' : '');
-        const card = view.card(k, `${step.lhs} → ${rhsText}`, parent);
+        // A3: production card, read off the tree so derivation is optional.
+        const card = view.card(k, productionLabel(parent), parent);
         add(card, 'opacity', 0, 1, t0 + 150, 300);
         add(card, 'dx', 16, 0, t0 + 150, 300, easeOutCubic);
         add(card, 'opacity', 1, 0, t0 + 800, 150);
@@ -173,4 +173,11 @@ export function buildSequence(derivation, root, view, opts = {}) {
     tl.onRender(() => view.flush());
     tl.seek(0);
     return tl;
+}
+
+/** "S → aSb" for an expanded node; symbols are spaced if any is longer than one character. */
+export function productionLabel(node) {
+    const rhs = node.children.filter(c => c.kind !== 'epsilon').map(c => c.symbol);
+    if (rhs.length === 0) return `${node.symbol} → ε`;
+    return `${node.symbol} → ${rhs.join(rhs.some(s => s.length > 1) ? ' ' : '')}`;
 }
