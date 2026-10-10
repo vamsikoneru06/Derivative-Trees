@@ -1,42 +1,42 @@
 import { buildTree } from './tree.js';
+import { tokenizeTarget } from './tokenize.js';
+import { makePruner } from './prune.js';
+import { recognizes } from './recognize.js';
 
 export function findTwoTrees(grammar, targetStr, limits = { maxNodes: 200000, maxMs: 800 }) {
-    let targetTokens;
-    if (typeof targetStr === 'string') {
-        if (targetStr.includes(' ') || Array.from(grammar.terminals).some(t => t.length > 1)) {
-            targetTokens = targetStr.includes(' ') ? targetStr.split(/\s+/) : targetStr.split('');
-        } else {
-            targetTokens = targetStr.split('');
-        }
-    } else {
-        targetTokens = targetStr;
+    const { tokens: targetTokens, error } = tokenizeTarget(targetStr, grammar);
+    if (!targetTokens) {
+        return { ambiguous: false, reason: error };
+    }
+    if (!recognizes(grammar, targetTokens)) {
+        return { ambiguous: false, reason: "not derivable" };
     }
 
     const targetKey = targetTokens.join(' ');
-    
+    const keep = makePruner(grammar, targetTokens);
+
     const startTime = performance.now();
-    let nodesVisited = 0;
 
     const queue = [ [grammar.start] ];
-    
+    let head = 0;
+
     // parents map: formKey -> Array of { parentForm: string[], step: Object }
     const parents = new Map();
-    parents.set(grammar.start, []); 
+    parents.set(grammar.start, []);
 
-    let hasEpsilon = false;
-    for (const rules of grammar.productions.values()) {
-        if (rules.some(r => r.length === 0)) hasEpsilon = true;
-    }
+    // BFS depth of each form. A parent record is kept only when the parent is exactly
+    // one level above, so parents[] never contains a cycle (e.g. S ⇒ SS ⇒ S via S → ε)
+    // and every walk back towards the start symbol terminates.
+    const depth = new Map([[grammar.start, 0]]);
 
     let foundTarget = false;
 
-    while (queue.length > 0) {
-        nodesVisited++;
-        if (nodesVisited > limits.maxNodes || (performance.now() - startTime > limits.maxMs)) {
-            break; 
+    while (head < queue.length) {
+        if (head >= limits.maxNodes || ((head & 1023) === 0 && performance.now() - startTime > limits.maxMs)) {
+            break;
         }
 
-        const form = queue.shift();
+        const form = queue[head++];
         const formKey = form.join(' ');
 
         if (formKey === targetKey) {
@@ -44,33 +44,12 @@ export function findTwoTrees(grammar, targetStr, limits = { maxNodes: 200000, ma
             break;
         }
 
-        let leftmostIndex = -1;
-        for (let i = 0; i < form.length; i++) {
-            if (grammar.isNonterminal(form[i])) {
-                leftmostIndex = i;
-                break;
-            }
-        }
-
+        const leftmostIndex = form.findIndex(sym => grammar.isNonterminal(sym));
         if (leftmostIndex === -1) continue;
-
-        const terminalPrefix = form.slice(0, leftmostIndex);
-        let prefixMatch = true;
-        for (let i = 0; i < terminalPrefix.length; i++) {
-            if (i >= targetTokens.length || terminalPrefix[i] !== targetTokens[i]) {
-                prefixMatch = false;
-                break;
-            }
-        }
-        if (!prefixMatch) continue;
-
-        const terminalsInForm = form.filter(sym => !grammar.isNonterminal(sym)).length;
-        if (terminalsInForm > targetTokens.length) continue;
-
-        if (!hasEpsilon && form.length > targetTokens.length) continue;
 
         const lhs = form[leftmostIndex];
         const productions = grammar.productions.get(lhs) || [];
+        const childDepth = depth.get(formKey) + 1;
 
         for (const rhs of productions) {
             const nextForm = [
@@ -78,7 +57,8 @@ export function findTwoTrees(grammar, targetStr, limits = { maxNodes: 200000, ma
                 ...rhs,
                 ...form.slice(leftmostIndex + 1)
             ];
-            
+            if (!keep(nextForm)) continue;
+
             const nextFormKey = nextForm.join(' ');
             const stepRecord = {
                 parentForm: form,
@@ -87,8 +67,9 @@ export function findTwoTrees(grammar, targetStr, limits = { maxNodes: 200000, ma
 
             if (!parents.has(nextFormKey)) {
                 parents.set(nextFormKey, [stepRecord]);
+                depth.set(nextFormKey, childDepth);
                 queue.push(nextForm);
-            } else {
+            } else if (depth.get(nextFormKey) === childDepth) {
                 const existing = parents.get(nextFormKey);
                 const isDuplicate = existing.some(e => 
                     e.parentForm.join(' ') === formKey && 

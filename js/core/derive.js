@@ -1,40 +1,39 @@
+import { tokenizeTarget } from './tokenize.js';
+import { makePruner } from './prune.js';
+import { recognizes } from './recognize.js';
+
 export function findLeftmost(grammar, targetStr, limits = { maxNodes: 200000, maxMs: 800 }) {
-    let targetTokens;
-    if (typeof targetStr === 'string') {
-        if (targetStr.includes(' ') || Array.from(grammar.terminals).some(t => t.length > 1)) {
-            targetTokens = targetStr.includes(' ') ? targetStr.split(/\s+/) : targetStr.split('');
-        } else {
-            targetTokens = targetStr.split('');
-        }
-    } else {
-        targetTokens = targetStr;
+    const { tokens: targetTokens, error } = tokenizeTarget(targetStr, grammar);
+    if (!targetTokens) {
+        return { found: false, reason: error };
+    }
+    if (!recognizes(grammar, targetTokens)) {
+        return { found: false, reason: "not derivable" };
     }
 
     const targetKey = targetTokens.join(' ');
+    const keep = makePruner(grammar, targetTokens);
     const startTime = performance.now();
-    let nodesVisited = 0;
 
-    const queue = [{ form: [grammar.start], steps: [] }];
-    const visited = new Set();
-    visited.add(grammar.start);
+    // Each entry points back to the entry it came from; steps are rebuilt at the end.
+    const queue = [{ form: [grammar.start], step: null, prev: null }];
+    let head = 0;
+    const visited = new Set([grammar.start]);
 
-    let hasEpsilon = false;
-    for (const rules of grammar.productions.values()) {
-        if (rules.some(r => r.length === 0)) hasEpsilon = true;
-    }
-
-    while (queue.length > 0) {
-        nodesVisited++;
-        if (nodesVisited > limits.maxNodes) {
+    while (head < queue.length) {
+        if (head >= limits.maxNodes) {
             return { found: false, reason: "limit: max nodes exceeded" };
         }
-        if (performance.now() - startTime > limits.maxMs) {
+        if ((head & 1023) === 0 && performance.now() - startTime > limits.maxMs) {
             return { found: false, reason: "limit: time exceeded" };
         }
 
-        const { form, steps } = queue.shift();
+        const entry = queue[head++];
+        const { form } = entry;
 
         if (form.join(' ') === targetKey) {
+            const steps = [];
+            for (let e = entry; e.step; e = e.prev) steps.unshift(e.step);
             return {
                 found: true,
                 derivation: {
@@ -45,30 +44,8 @@ export function findLeftmost(grammar, targetStr, limits = { maxNodes: 200000, ma
             };
         }
 
-        let leftmostIndex = -1;
-        for (let i = 0; i < form.length; i++) {
-            if (grammar.isNonterminal(form[i])) {
-                leftmostIndex = i;
-                break;
-            }
-        }
-
+        const leftmostIndex = form.findIndex(sym => grammar.isNonterminal(sym));
         if (leftmostIndex === -1) continue;
-
-        const terminalPrefix = form.slice(0, leftmostIndex);
-        let prefixMatch = true;
-        for (let i = 0; i < terminalPrefix.length; i++) {
-            if (i >= targetTokens.length || terminalPrefix[i] !== targetTokens[i]) {
-                prefixMatch = false;
-                break;
-            }
-        }
-        if (!prefixMatch) continue;
-
-        const terminalsInForm = form.filter(sym => !grammar.isNonterminal(sym)).length;
-        if (terminalsInForm > targetTokens.length) continue;
-
-        if (!hasEpsilon && form.length > targetTokens.length) continue;
 
         const lhs = form[leftmostIndex];
         const productions = grammar.productions.get(lhs) || [];
@@ -81,19 +58,13 @@ export function findLeftmost(grammar, targetStr, limits = { maxNodes: 200000, ma
             ];
 
             const formKey = nextForm.join(' ');
-            if (!visited.has(formKey)) {
-                visited.add(formKey);
-                const nextStep = {
-                    form: form,
-                    index: leftmostIndex,
-                    lhs: lhs,
-                    rhs: rhs
-                };
-                queue.push({
-                    form: nextForm,
-                    steps: [...steps, nextStep]
-                });
-            }
+            if (visited.has(formKey) || !keep(nextForm)) continue;
+            visited.add(formKey);
+            queue.push({
+                form: nextForm,
+                step: { form: form, index: leftmostIndex, lhs: lhs, rhs: rhs },
+                prev: entry
+            });
         }
     }
 
