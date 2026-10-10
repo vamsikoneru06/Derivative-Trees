@@ -1,0 +1,50 @@
+/* UI micro-interactions (A13, A14). Tree animation is in js/anim, not here. */
+
+@keyframes page-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}
+main {
+    animation: page-in var(--dur-mid) var(--ease-out) both;
+}
+
+@keyframes pop {
+    0%   { transform: scale(0.85); opacity: 0; }
+    60%  { transform: scale(1.06); opacity: 1; }
+    100% { transform: scale(1); }
+}
+.badge.is-new { animation: pop var(--dur-mid) var(--ease-out); }
+
+/* A14: wrong choice shakes, right choice grows. */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-7px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(2px); }
+}
+@keyframes grow {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.04); }
+    100% { transform: scale(1); }
+}
+.choice.is-wrong { animation: shake 360ms ease-out; }
+.choice.is-correct { animation: grow 320ms var(--ease-out); }
+
+/* Steps panel: the current row slides its marker in (A9). */
+@keyframes row-in {
+    from { border-left-color: transparent; }
+}
+.steps li.is-current { animation: row-in var(--dur-mid) var(--ease-out); }
+
+.feature-grid .card {
+    transition: transform var(--dur-mid) var(--ease-out), box-shadow var(--dur-mid);
+}
+.feature-grid .card:hover { transform: translateY(-3px); }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0ms !important;
+        transition-duration: 0ms !important;
+    }
+}

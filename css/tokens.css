@@ -1,0 +1,104 @@
+/* Design tokens. PLACEHOLDER values: the visual direction is not decided yet.
+   Swap these for the values from the design hand-off; no other file should
+   hard-code a colour, font, spacing or radius. */
+
+:root {
+    /* surfaces and text */
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f4;
+    --fg: #1d2024;
+    --muted: #5d636d;
+    --line: #d9dde3;
+
+    /* brand / interaction */
+    --accent: #3d5a99;
+    --accent-fg: #ffffff;
+    --accent-soft: #e3e9f6;
+    --focus: #d9622b;
+
+    /* status */
+    --ok: #2f7d5b;
+    --ok-soft: #dcf1e6;
+    --bad: #b3372f;
+    --bad-soft: #f8e1df;
+    --warn: #9a6a12;
+    --warn-soft: #f7ecd5;
+
+    /* tree */
+    --node-nt: #3d5a99;
+    --node-nt-fill: #dbe4f6;
+    --node-term: #2f7d5b;
+    --node-term-fill: #d5efe2;
+    --node-eps: #8a8f98;
+    --node-active: #d9622b;
+    --edge: #8a8f98;
+    --diff-highlight: #e8a33d;
+
+    /* type */
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+    --text-s: 0.875rem;
+    --text-m: 1rem;
+    --text-l: 1.25rem;
+    --text-xl: 1.75rem;
+    --text-xxl: clamp(2.1rem, 5vw, 3.4rem);
+
+    /* space, shape, depth */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 40px;
+    --radius-s: 6px;
+    --radius-m: 12px;
+    --shadow: 0 1px 2px rgb(20 24 31 / 0.06), 0 4px 16px rgb(20 24 31 / 0.06);
+
+    /* motion (UI only; tree timing lives in js/anim/sequences.js) */
+    --dur-fast: 120ms;
+    --dur-mid: 240ms;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #14171c;
+        --surface: #1c2027;
+        --surface-2: #252a33;
+        --fg: #e8eaee;
+        --muted: #a2a8b3;
+        --line: #343a45;
+
+        --accent: #8eaaf0;
+        --accent-fg: #10131a;
+        --accent-soft: #263453;
+        --focus: #f08a55;
+
+        --ok: #6cc79c;
+        --ok-soft: #1d3a2d;
+        --bad: #f0857c;
+        --bad-soft: #43221f;
+        --warn: #e6b65c;
+        --warn-soft: #3e3119;
+
+        --node-nt: #8eaaf0;
+        --node-nt-fill: #263453;
+        --node-term: #6cc79c;
+        --node-term-fill: #1d3a2d;
+        --node-eps: #8a909b;
+        --node-active: #f08a55;
+        --edge: #6d7480;
+        --diff-highlight: #e8b04d;
+
+        --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --dur-fast: 0ms;
+        --dur-mid: 0ms;
+    }
+}

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Visualizer · Derivation Tree Explorer</title>
+    <meta name="description" content="Type a context-free grammar and a string, and watch its derivation tree grow step by step.">
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/tree.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <script type="module" src="js/pages/visualizer.js"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <a class="brand" href="index.html">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 8 8 22M16 8l8 14" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="16" cy="7" r="4.5" fill="var(--accent)"/><rect x="4" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/><rect x="20" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/></svg>
+            Derivation Tree Explorer
+        </a>
+        <nav class="site-nav" aria-label="Main">
+            <a href="index.html">Home</a>
+            <a href="learn.html">Learn</a>
+            <a href="visualizer.html" aria-current="page">Visualizer</a>
+            <a href="ambiguity.html">Ambiguity</a>
+            <a href="quiz.html">Quiz</a>
+            <a href="team.html">Team</a>
+        </nav>
+    </header>
+
+    <main id="main" class="viz">
+        <section class="viz__input panel" aria-label="Grammar and string">
+            <div class="field">
+                <label for="preset">Preset</label>
+                <select id="preset" class="select"></select>
+            </div>
+            <div id="editor" class="field"></div>
+            <div class="field">
+                <label for="target">String</label>
+                <div class="row">
+                    <input id="target" class="input input--mono" autocomplete="off" spellcheck="false" autocapitalize="off">
+                    <button id="derive" class="btn btn--primary" type="button">Derive</button>
+                </div>
+                <p class="hint">Leave it empty for ε. Spaces between symbols are optional.</p>
+            </div>
+            <div id="status" class="field" aria-live="polite"></div>
+
+            <div class="field">
+                <span class="field-label" id="mode-label">Mode</span>
+                <div class="segmented" role="group" aria-labelledby="mode-label">
+                    <button type="button" data-mode="auto" aria-pressed="true">Auto</button>
+                    <button type="button" data-mode="practice" aria-pressed="false">Practice</button>
+                </div>
+            </div>
+
+            <section id="practice" hidden aria-label="Practice">
+                <p class="hint" id="practice-prompt"></p>
+                <ul class="choices" id="practice-choices"></ul>
+                <p id="practice-feedback" class="hint" aria-live="polite"></p>
+                <button id="practice-reset" class="btn btn--small" type="button">Start over</button>
+            </section>
+        </section>
+
+        <section class="viz__canvas panel canvas-panel" aria-label="Derivation tree">
+            <svg id="tree" role="img" aria-labelledby="tree-summary"></svg>
+            <p id="canvas-empty" class="canvas-empty"><span>Pick a grammar, type a string and press <strong>Derive</strong>.</span></p>
+            <p id="tree-summary" class="visually-hidden" aria-live="polite"></p>
+        </section>
+
+        <section class="viz__steps panel" aria-label="Derivation steps">
+            <h2 class="panel__title">Derivation steps
+                <button id="export" class="btn btn--small" type="button" disabled>Export SVG</button>
+            </h2>
+            <ol id="steps" class="steps"></ol>
+        </section>
+
+        <div id="playbar" class="viz__bar panel playbar">
+            <span class="playbar__spacer"></span>
+            <div class="segmented" role="group" aria-label="Derivation order" id="order">
+                <button type="button" data-order="leftmost" aria-pressed="true">Leftmost</button>
+                <button type="button" data-order="rightmost" aria-pressed="false">Rightmost</button>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
