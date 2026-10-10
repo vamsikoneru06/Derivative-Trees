@@ -101,6 +101,7 @@
     margin-top: var(--space-5);
 }
 .amb-trees .panel { height: 420px; display: flex; flex-direction: column; }
+.amb-trees svg { flex: 1; min-height: 0; width: 100%; }
 
 /* ---- learn ---- */
 .learn {

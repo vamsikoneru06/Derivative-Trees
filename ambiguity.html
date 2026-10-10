@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ambiguity · Derivation Tree Explorer</title>
+    <meta name="description" content="Find two different derivation trees for the same string and see where they differ.">
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/tree.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <script type="module" src="js/pages/ambiguity.js"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <a class="brand" href="index.html">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 8 8 22M16 8l8 14" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="16" cy="7" r="4.5" fill="var(--accent)"/><rect x="4" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/><rect x="20" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/></svg>
+            Derivation Tree Explorer
+        </a>
+        <nav class="site-nav" aria-label="Main">
+            <a href="index.html">Home</a>
+            <a href="learn.html">Learn</a>
+            <a href="visualizer.html">Visualizer</a>
+            <a href="ambiguity.html" aria-current="page">Ambiguity</a>
+            <a href="quiz.html">Quiz</a>
+            <a href="team.html">Team</a>
+        </nav>
+    </header>
+
+    <main id="main" class="page">
+        <h1>Ambiguity explorer</h1>
+        <p class="hero__lead">A grammar is <strong>ambiguous</strong> if some string has two different derivation trees.
+            Enter a grammar and a string, and we search for two.</p>
+
+        <section class="panel">
+            <div class="amb-inputs">
+                <div class="field">
+                    <label for="preset">Preset</label>
+                    <select id="preset" class="select"></select>
+                </div>
+                <div class="field">
+                    <label for="target">String</label>
+                    <input id="target" class="input input--mono" autocomplete="off" spellcheck="false" autocapitalize="off">
+                </div>
+                <div class="field">
+                    <button id="explore" class="btn btn--primary" type="button">Find two trees</button>
+                </div>
+            </div>
+            <div id="editor" class="field"></div>
+            <div id="status" aria-live="polite"></div>
+        </section>
+
+        <section class="amb-trees" aria-label="Two derivation trees">
+            <div class="panel">
+                <h2 class="panel__title">Tree 1</h2>
+                <svg id="tree-1" role="img" aria-label="Tree 1"></svg>
+            </div>
+            <div class="panel">
+                <h2 class="panel__title">Tree 2</h2>
+                <svg id="tree-2" role="img" aria-label="Tree 2"></svg>
+            </div>
+        </section>
+
+        <div id="playbar" class="panel playbar" style="margin-top: var(--space-4)"></div>
+
+        <p id="explain" class="callout" style="margin-top: var(--space-4)" aria-live="polite"></p>
+    </main>
+
+    <footer class="site-footer">
+        Ambiguity of a context-free grammar is undecidable in general, so a search can only ever find a witness, never prove there is none.
+    </footer>
+</body>
+</html>

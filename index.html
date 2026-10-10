@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Derivation Tree Explorer</title>
+    <meta name="description" content="Watch context-free grammars grow into derivation trees, one production at a time.">
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/tree.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <script type="module" src="js/pages/home.js"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <a class="brand" href="index.html">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 8 8 22M16 8l8 14" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="16" cy="7" r="4.5" fill="var(--accent)"/><rect x="4" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/><rect x="20" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/></svg>
+            Derivation Tree Explorer
+        </a>
+        <nav class="site-nav" aria-label="Main">
+            <a href="index.html" aria-current="page">Home</a>
+            <a href="learn.html">Learn</a>
+            <a href="visualizer.html">Visualizer</a>
+            <a href="ambiguity.html">Ambiguity</a>
+            <a href="quiz.html">Quiz</a>
+            <a href="team.html">Team</a>
+        </nav>
+    </header>
+
+    <main id="main" class="page">
+        <section class="hero">
+            <div>
+                <h1>Watch grammars grow into trees.</h1>
+                <p class="hero__lead">Type a context-free grammar and a string. See its derivation tree
+                    built one production at a time, next to the list of sentential forms.</p>
+                <div class="hero__actions">
+                    <a class="btn btn--primary" href="visualizer.html">Open Visualizer</a>
+                    <a class="btn" href="learn.html">Learn the theory</a>
+                </div>
+            </div>
+            <div class="hero__art panel" aria-label="Animation: the tree for S → aSb | ε deriving aabb builds itself">
+                <svg id="hero-tree" aria-hidden="true"></svg>
+            </div>
+        </section>
+
+        <section class="feature-grid" aria-label="Features">
+            <article class="card">
+                <div class="card__art"><svg viewBox="0 0 120 90" aria-hidden="true">
+                    <line x1="60" y1="18" x2="30" y2="62" stroke="var(--edge)" stroke-width="2"/>
+                    <line x1="60" y1="18" x2="90" y2="62" stroke="var(--edge)" stroke-width="2" stroke-dasharray="4 4"/>
+                    <circle cx="60" cy="18" r="13" fill="var(--node-nt-fill)" stroke="var(--node-nt)" stroke-width="2"/>
+                    <circle cx="60" cy="18" r="18" fill="none" stroke="var(--node-active)" stroke-width="3"/>
+                    <rect x="18" y="50" width="24" height="24" rx="5" fill="var(--node-term-fill)" stroke="var(--node-term)" stroke-width="2"/>
+                    <circle cx="90" cy="62" r="12" fill="var(--surface)" stroke="var(--node-nt)" stroke-width="2" opacity="0.6"/>
+                </svg></div>
+                <h3>Step-by-step derivation</h3>
+                <p>Play, pause and step through every production. Step back at any time; it lands exactly where playing would.</p>
+            </article>
+            <article class="card">
+                <div class="card__art"><svg viewBox="0 0 120 90" aria-hidden="true">
+                    <text x="8" y="30" font-family="var(--font-mono)" font-size="15" fill="var(--fg)">S ⇒ <tspan text-decoration="underline" fill="var(--node-active)">A</tspan>B</text>
+                    <text x="8" y="72" font-family="var(--font-mono)" font-size="15" fill="var(--fg)">S ⇒ A<tspan text-decoration="underline" fill="var(--node-active)">B</tspan></text>
+                    <text x="80" y="30" font-family="var(--font-body)" font-size="11" fill="var(--muted)">left</text>
+                    <text x="80" y="72" font-family="var(--font-body)" font-size="11" fill="var(--muted)">right</text>
+                </svg></div>
+                <h3>Leftmost vs rightmost</h3>
+                <p>Switch the derivation order and watch the same tree grow in a different sequence.</p>
+            </article>
+            <article class="card">
+                <div class="card__art"><svg viewBox="0 0 120 90" aria-hidden="true">
+                    <g stroke="var(--edge)" stroke-width="2"><line x1="30" y1="16" x2="14" y2="58"/><line x1="30" y1="16" x2="44" y2="58"/><line x1="90" y1="16" x2="76" y2="58"/><line x1="90" y1="16" x2="106" y2="58"/></g>
+                    <circle cx="30" cy="58" r="14" fill="var(--diff-highlight)" fill-opacity="0.35"/>
+                    <circle cx="90" cy="58" r="14" fill="var(--diff-highlight)" fill-opacity="0.35"/>
+                    <g fill="var(--node-nt-fill)" stroke="var(--node-nt)" stroke-width="2"><circle cx="30" cy="16" r="9"/><circle cx="90" cy="16" r="9"/><circle cx="14" cy="58" r="8"/><circle cx="44" cy="58" r="8"/><circle cx="76" cy="58" r="8"/><circle cx="106" cy="58" r="8"/></g>
+                </svg></div>
+                <h3>Spot ambiguity</h3>
+                <p>Find two different trees for one string and see exactly which subtrees differ.</p>
+            </article>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        Formal Languages &amp; Automata course project · Built by the <a href="team.html">team</a> with hand-written HTML, CSS, JavaScript and SVG.
+    </footer>
+</body>
+</html>
