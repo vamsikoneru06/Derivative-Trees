@@ -11,8 +11,8 @@ export function prefersReducedMotion() {
 }
 
 /**
- * Build the whole animation for one derivation (A1–A8, plus A10 glow when
- * opts.diffIds is given). Step k (1-based) runs from
+ * Build the whole animation for one derivation (A1–A8, plus A10 glow on
+ * the nodes in opts.glowIds). Step k (1-based) runs from
  * offset + ROOT_MS + (k - 1) * STEP_MS for STEP_MS, with these phases:
  *
  *    0–250   A2  ring pulses on the nonterminal being expanded
@@ -28,7 +28,7 @@ export function prefersReducedMotion() {
  * @param derivation  { steps } — only its length is used; may be null
  * @param root        TreeNode whose expandedAtStep matches the derivation
  * @param view        createTreeView(...) result
- * @param opts        { timeline, offset, yield, diffIds, reducedMotion, layout }
+ * @param opts        { timeline, offset, yield, glowIds, reducedMotion, layout }
  */
 export function buildSequence(derivation, root, view, opts = {}) {
     const tl = opts.timeline ?? new Timeline();
@@ -115,19 +115,15 @@ export function buildSequence(derivation, root, view, opts = {}) {
 
     let end = ROOT_MS + stepCount * STEP_MS;
 
-    // ---- A10: differing subtrees glow (ambiguity explorer) ----
-    if (opts.diffIds && opts.diffIds.length > 0) {
+    // ---- A10: differing nodes glow (ambiguity explorer), top-down ----
+    if (opts.glowIds && opts.glowIds.length > 0) {
         const start = end + 200;
-        const inDiff = new Set();
-        for (const id of opts.diffIds) {
-            const top = byId.get(id);
-            if (top) preorder(top).forEach(n => inDiff.add(n));
-        }
-        for (const n of inDiff) {
-            const depth = layouts[stepCount].get(n.id).y / gapY;
-            const t = start + depth * 120;
+        const glowing = new Set(opts.glowIds);
+        for (const n of nodes.filter(n => glowing.has(n.id))) {
+            const depth = final.get(n.id).y / gapY;
+            const t = start + depth * 150;
             add(view.ensureNode(n), 'glow', 0, 1, t, 400, easeOutCubic);
-            if (n.parent && inDiff.has(n.parent)) add(view.ensureEdge(n.parent, n), 'glow', 0, 1, t, 400);
+            if (n.parent && glowing.has(n.parent.id)) add(view.ensureEdge(n.parent, n), 'glow', 0, 1, t, 400);
         }
         end = start + 1200;
     }
