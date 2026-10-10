@@ -31,11 +31,8 @@ main {
 .choice.is-wrong { animation: shake 360ms ease-out; }
 .choice.is-correct { animation: grow 320ms var(--ease-out); }
 
-/* Steps panel: the current row slides its marker in (A9). */
-@keyframes row-in {
-    from { border-left-color: transparent; }
-}
-.steps li.is-current { animation: row-in var(--dur-mid) var(--ease-out); }
+/* A14 on the Visualizer: wrong practice choice shakes. */
+.vz-choice.is-wrong { animation: shake 360ms ease-out; }
 
 .feature-grid .card {
     transition: transform var(--dur-mid) var(--ease-out), box-shadow var(--dur-mid);

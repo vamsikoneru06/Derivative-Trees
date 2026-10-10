@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Visualizer · Derivation Tree Explorer</title>
     <meta name="description" content="Type a context-free grammar and a string, and watch its derivation tree grow step by step.">
+    <script>try{var t=localStorage.getItem('dte-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+    <script type="module" src="js/ui/theme.js"></script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/tree.css">
+    <link rel="stylesheet" href="css/visualizer.css">
     <link rel="stylesheet" href="css/animations.css">
     <script type="module" src="js/pages/visualizer.js"></script>
 </head>
@@ -17,71 +20,140 @@
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
         <a class="brand" href="index.html">
-            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 8 8 22M16 8l8 14" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="16" cy="7" r="4.5" fill="var(--accent)"/><rect x="4" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/><rect x="20" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/></svg>
+            <svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="5" r="4" fill="var(--ink)"/><circle cx="5" cy="17" r="3.4" fill="none" stroke="var(--tree-t)" stroke-width="1.6"/><circle cx="17" cy="17" r="3.4" fill="var(--tree-active)"/><path d="M9.2 8.4 6.4 14M12.8 8.4l2.8 5.6" stroke="var(--ink-3)" stroke-width="1.4"/></svg>
             Derivation Tree Explorer
         </a>
         <nav class="site-nav" aria-label="Main">
             <a href="index.html">Home</a>
-            <a href="learn.html">Learn</a>
             <a href="visualizer.html" aria-current="page">Visualizer</a>
             <a href="ambiguity.html">Ambiguity</a>
+            <a href="learn.html">Learn</a>
             <a href="quiz.html">Quiz</a>
             <a href="team.html">Team</a>
         </nav>
+        <div class="theme-toggle" role="group" aria-label="Colour theme">
+            <span class="theme-toggle__thumb" aria-hidden="true"></span>
+            <button type="button" data-theme-set="light">Light</button>
+            <button type="button" data-theme-set="dark">Dark</button>
+        </div>
     </header>
 
-    <main id="main" class="viz">
-        <section class="viz__input panel" aria-label="Grammar and string">
-            <div class="field">
-                <label for="preset">Preset</label>
-                <select id="preset" class="select"></select>
+    <main id="main" class="vz">
+        <header class="vz-head">
+            <div class="vz-head__titles">
+                <span class="vz-kicker">Step by step</span>
+                <h1>Visualizer</h1>
             </div>
-            <div id="editor" class="field"></div>
-            <div class="field">
-                <label for="target">String</label>
-                <div class="row">
-                    <input id="target" class="input input--mono" autocomplete="off" spellcheck="false" autocapitalize="off">
-                    <button id="derive" class="btn btn--primary" type="button">Derive</button>
-                </div>
-                <p class="hint">Leave it empty for ε. Spaces between symbols are optional.</p>
+            <div class="seg seg--mode" role="group" aria-label="Mode" data-value="auto">
+                <span class="seg__thumb" aria-hidden="true"></span>
+                <button type="button" data-mode="auto" aria-pressed="true">Auto</button>
+                <button type="button" data-mode="practice" aria-pressed="false">Practice</button>
             </div>
-            <div id="status" class="field" aria-live="polite"></div>
+        </header>
 
-            <div class="field">
-                <span class="field-label" id="mode-label">Mode</span>
-                <div class="segmented" role="group" aria-labelledby="mode-label">
-                    <button type="button" data-mode="auto" aria-pressed="true">Auto</button>
-                    <button type="button" data-mode="practice" aria-pressed="false">Practice</button>
+        <section class="vz-input card-x" aria-label="Grammar and string">
+            <div class="vz-input__grammar">
+                <div class="vz-input__row">
+                    <h2>Grammar</h2>
+                    <div class="select-wrap">
+                        <select id="preset" aria-label="Example grammar"></select>
+                        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4.5 6 8.5 10 4.5"/></svg>
+                    </div>
+                </div>
+                <div id="editor" class="vz-editor"></div>
+            </div>
+            <div class="vz-input__string">
+                <h2><label for="target">String</label></h2>
+                <div class="vz-input__derive">
+                    <input id="target" class="vz-string" autocomplete="off" spellcheck="false" autocapitalize="off">
+                    <button id="derive" class="vz-derive" type="button">Derive</button>
+                </div>
+                <div class="vz-status" aria-live="polite">
+                    <span id="badge" class="vz-badge" data-kind="idle"><span class="vz-badge__icon" aria-hidden="true"></span><span class="vz-badge__text"></span></span>
+                    <span id="badge-note" class="vz-badge-note"></span>
                 </div>
             </div>
+        </section>
 
-            <section id="practice" hidden aria-label="Practice">
-                <p class="hint" id="practice-prompt"></p>
-                <ul class="choices" id="practice-choices"></ul>
-                <p id="practice-feedback" class="hint" aria-live="polite"></p>
-                <button id="practice-reset" class="btn btn--small" type="button">Start over</button>
+        <div class="vz-grid">
+            <section class="vz-stage-col" aria-label="Derivation tree">
+                <div class="vz-stage">
+                    <div class="vz-stage__top">
+                        <div class="vz-caption" aria-live="polite">
+                            <span id="kicker" class="vz-caption__kicker"></span>
+                            <span id="caption" class="vz-caption__text"></span>
+                        </div>
+                        <button id="yield-btn" class="vz-yield-btn" type="button" hidden>Show yield</button>
+                    </div>
+                    <div class="vz-tree">
+                        <svg id="tree" role="img" aria-labelledby="caption"></svg>
+                        <div id="yield-chip" class="vz-yield-chip" aria-hidden="true">
+                            <span class="vz-yield-chip__label">Yield</span>
+                            <span id="yield-str" class="vz-yield-chip__str"></span>
+                        </div>
+                    </div>
+
+                    <div class="dock" role="group" aria-label="Playback">
+                        <div class="dock__buttons">
+                            <button type="button" class="dock__btn" data-act="restart" aria-label="Restart" title="Restart (R)">
+                                <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9a5 5 0 1 0 1.6-3.7"/><path d="M4 2.5v3.3h3.3"/></svg>
+                            </button>
+                            <button type="button" class="dock__btn" data-act="back" aria-label="Step back" title="Step back (←)">
+                                <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="3.5" y="4" width="2.2" height="10" rx="1" fill="currentColor"/><path d="M14 4.5v9L7.5 9z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/></svg>
+                            </button>
+                            <button type="button" class="dock__play" data-act="play" aria-label="Play" title="Play / pause (Space)">
+                                <svg viewBox="0 0 22 22" aria-hidden="true">
+                                    <path class="dock__tri" d="M7 4.5v13L17.5 11z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                    <rect class="dock__bar" x="5.5" y="4.5" width="4" height="13" rx="1.2" fill="currentColor"/>
+                                    <rect class="dock__bar" x="12.5" y="4.5" width="4" height="13" rx="1.2" fill="currentColor"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="dock__btn" data-act="forward" aria-label="Step forward" title="Step forward (→)">
+                                <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4.5v9L10.5 9z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/><rect x="12.3" y="4" width="2.2" height="10" rx="1" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <div class="dock__meter">
+                            <span class="dock__count">STEP
+                                <span class="dock__roll"><span class="dock__roll-col"></span></span>
+                                <span class="dock__total"></span>
+                            </span>
+                            <div class="dock__ticks"></div>
+                        </div>
+                        <div class="seg seg--dark seg--speed" role="group" aria-label="Speed"></div>
+                        <div class="seg seg--dark seg--order" role="group" aria-label="Derivation order" data-value="leftmost">
+                            <span class="seg__thumb" aria-hidden="true"></span>
+                            <button type="button" data-order="leftmost" aria-pressed="true">Leftmost</button>
+                            <button type="button" data-order="rightmost" aria-pressed="false">Rightmost</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vz-legend" aria-label="Legend">
+                    <span><svg viewBox="-11 -11 22 22" aria-hidden="true"><circle r="9.5" fill="none" stroke="var(--tree-nt)" stroke-dasharray="2 2.5"/><circle r="6.5" fill="var(--tree-nt)"/></svg>Open nonterminal</span>
+                    <span><svg viewBox="-11 -11 22 22" aria-hidden="true"><circle r="9.5" fill="none" stroke="var(--tree-active)" stroke-width="2"/><circle r="6.5" fill="var(--tree-active)"/></svg>Being expanded</span>
+                    <span><svg viewBox="-11 -11 22 22" aria-hidden="true"><circle r="6.5" fill="var(--tree-nt)"/></svg>Expanded</span>
+                    <span><svg viewBox="-11 -11 22 22" aria-hidden="true"><circle r="7" fill="var(--tree-surface)" stroke="var(--tree-t)" stroke-width="2"/></svg>Terminal</span>
+                    <span><svg viewBox="-11 -11 22 22" aria-hidden="true"><circle r="7" fill="var(--tree-surface)" stroke="var(--tree-muted)" stroke-width="1.6" stroke-dasharray="3 2"/></svg>ε, empty</span>
+                </div>
             </section>
-        </section>
 
-        <section class="viz__canvas panel canvas-panel" aria-label="Derivation tree">
-            <svg id="tree" role="img" aria-labelledby="tree-summary"></svg>
-            <p id="canvas-empty" class="canvas-empty"><span>Pick a grammar, type a string and press <strong>Derive</strong>.</span></p>
-            <p id="tree-summary" class="visually-hidden" aria-live="polite"></p>
-        </section>
-
-        <section class="viz__steps panel" aria-label="Derivation steps">
-            <h2 class="panel__title">Derivation steps
-                <button id="export" class="btn btn--small" type="button" disabled>Export SVG</button>
-            </h2>
-            <ol id="steps" class="steps"></ol>
-        </section>
-
-        <div id="playbar" class="viz__bar panel playbar">
-            <span class="playbar__spacer"></span>
-            <div class="segmented" role="group" aria-label="Derivation order" id="order">
-                <button type="button" data-order="leftmost" aria-pressed="true">Leftmost</button>
-                <button type="button" data-order="rightmost" aria-pressed="false">Rightmost</button>
-            </div>
+            <aside class="vz-side">
+                <section id="practice" class="card-x vz-practice" hidden aria-label="Practice">
+                    <div class="vz-practice__head">
+                        <h2 id="prac-title">Expand S</h2>
+                        <span id="prac-score" class="vz-practice__score"></span>
+                    </div>
+                    <div id="choices" class="vz-choices"></div>
+                    <p id="prac-note" class="vz-practice__note" aria-live="polite"></p>
+                </section>
+                <section class="card-x steps-card" aria-label="Derivation steps">
+                    <div class="steps-card__head">
+                        <h2>Derivation steps</h2>
+                        <span id="steps-note" class="steps-card__note"></span>
+                    </div>
+                    <ol id="steps" class="steps"></ol>
+                </section>
+            </aside>
         </div>
     </main>
 </body>

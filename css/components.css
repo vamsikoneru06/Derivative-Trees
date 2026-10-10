@@ -79,45 +79,68 @@
 /* ---- grammar editor: gutter with line numbers + textarea ---- */
 .editor {
     display: grid;
-    grid-template-columns: auto 1fr;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-s);
-    background: var(--surface);
+    grid-template-columns: 36px 1fr;
+    border-radius: 14px;
+    background: var(--bg-2);
     overflow: hidden;
     font-family: var(--font-mono);
-    font-size: 1rem;
-    line-height: 1.6;
+    font-size: 16px;
+    line-height: 28px;
+    transition: box-shadow 300ms;
 }
-.editor:focus-within { outline: 3px solid var(--focus); outline-offset: 1px; }
-.editor[data-state="error"] { border-color: var(--bad); }
+.editor:focus-within { box-shadow: 0 0 0 2px var(--ink), 0 0 0 6px var(--focus); }
+.editor[data-state="error"] { box-shadow: 0 0 0 2px var(--err), 0 0 0 6px var(--err-soft); }
 .editor__gutter {
-    padding: var(--space-2) var(--space-2);
-    background: var(--surface-2);
-    color: var(--muted);
+    padding: 12px 9px 12px 0;
     text-align: right;
+    color: var(--ink-3);
+    display: flex;
+    flex-direction: column;
     user-select: none;
-    min-width: 2.4em;
-    overflow: hidden;
 }
-.editor__gutter span { display: block; }
-.editor__gutter .is-error { color: var(--bad); font-weight: 700; background: var(--bad-soft); }
+.editor__gutter .is-error { color: var(--err); font-weight: 800; }
 .editor__text {
-    border: 0;
-    outline: 0;
-    resize: vertical;
-    min-height: 9.5em;
-    padding: var(--space-2) var(--space-3);
+    border: none;
+    outline: none;
+    resize: none;
     background: transparent;
-    color: var(--fg);
+    color: var(--ink);
+    padding: 12px 12px 12px 4px;
     font: inherit;
+    font-weight: 500;
     line-height: inherit;
     white-space: pre;
     overflow-x: auto;
+    overflow-y: hidden;
 }
-.messages { list-style: none; margin: var(--space-2) 0 0; padding: 0; font-size: var(--text-s); }
-.messages li { padding: var(--space-1) var(--space-2); border-radius: var(--radius-s); margin-bottom: var(--space-1); }
-.messages .error { background: var(--bad-soft); color: var(--bad); }
-.messages .warning { background: var(--warn-soft); color: var(--warn); }
+.editor__status {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-3);
+    transition: color 300ms;
+}
+.editor__icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--ink-3);
+    color: var(--surface);
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 800;
+}
+.editor__status[data-state="ok"] { color: var(--ok); }
+.editor__status[data-state="ok"] .editor__icon { background: var(--ok); }
+.editor__status[data-state="warn"] { color: var(--warn); }
+.editor__status[data-state="warn"] .editor__icon { background: var(--warn); }
+.editor__status[data-state="error"] { color: var(--err); }
+.editor__status[data-state="error"] .editor__icon { background: var(--err); }
 .hint { font-size: var(--text-s); color: var(--muted); }
 
 /* ---- badges ---- */
@@ -189,46 +212,6 @@
     background: var(--accent);
 }
 .playbar__spacer { flex: 1; }
-
-/* ---- steps panel ---- */
-.steps {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    overflow-y: auto;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-    flex: 1;
-    position: relative;
-}
-.steps li {
-    display: grid;
-    grid-template-columns: 2.4em 1.2em 1fr;
-    align-items: baseline;
-    padding: var(--space-2);
-    border-radius: var(--radius-s);
-    border-left: 3px solid transparent;
-    cursor: pointer;
-    color: var(--fg);
-    transition: background var(--dur-mid), color var(--dur-mid), border-color var(--dur-mid);
-}
-.steps li:hover { background: var(--surface-2); }
-.steps .step__n { color: var(--muted); font-size: var(--text-s); }
-.steps .step__arrow { color: var(--muted); }
-.steps .step__form { word-break: break-word; }
-.steps li.is-upcoming { color: var(--muted); opacity: 0.55; }
-.steps li.is-current {
-    background: var(--accent-soft);
-    border-left-color: var(--accent);
-    font-weight: 700;
-}
-.steps .sym--next {
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 4px;
-    text-decoration-color: var(--node-active);
-}
-.steps .sym--new { color: var(--accent); }
 
 /* ---- cards ---- */
 .card {

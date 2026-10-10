@@ -76,5 +76,7 @@ tests/       node --test suites
 The animation engine is time-based: the picture at time `t` is a pure function
 of `t`, so stepping back is a seek and always matches what playing would show.
 
-`css/tokens.css` holds every colour, font and spacing value as placeholders until
-the visual design is final.
+`css/tokens.css` holds every colour, font and spacing value, taken from the
+Claude Design hand-off (Apple-like, system fonts, graphite accent). The header's
+Light / Dark toggle overrides the system setting and is remembered per browser.
+No web fonts are loaded: the font stack falls back to the system UI font.

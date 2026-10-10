@@ -22,33 +22,6 @@ export function nextFrame() {
     });
 }
 
-const STYLE_PROPS = [
-    'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray',
-    'stroke-linecap', 'font-family', 'font-size', 'font-weight', 'font-style',
-];
-
-/** Download the SVG with its computed styles inlined, so it looks the same outside the site. */
-export function exportSvg(svg, filename) {
-    const clone = svg.cloneNode(true);
-    const source = svg.querySelectorAll('*');
-    const target = clone.querySelectorAll('*');
-    source.forEach((el, i) => {
-        const style = getComputedStyle(el);
-        target[i].setAttribute('style', STYLE_PROPS.map(p => `${p}:${style.getPropertyValue(p)}`).join(';'));
-    });
-    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    const bg = getComputedStyle(document.body).backgroundColor;
-    clone.style.background = bg;
-
-    const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 /** Play `timeline` whenever `el` is on screen, pause when it leaves; optionally loop. */
 export function playWhenVisible(el, timeline, { loop = true, pauseMs = 2200, from = 0 } = {}) {
     let visible = false;

@@ -5,201 +5,386 @@ import { tokenizeTarget } from '../core/tokenize.js';
 import { recognizes } from '../core/recognize.js';
 import { createTreeView } from '../render/svg.js';
 import { preorder } from '../render/layout.js';
-import { buildSequence, productionLabel } from '../anim/sequences.js';
+import { buildSequence, BEAT_MS, YIELD_MS } from '../anim/sequences.js';
 import { mountEditor } from '../ui/grammar-editor.js';
-import { mountControls } from '../ui/controls.js';
-import { mountSteps } from '../ui/steps-panel.js';
-import { PRESETS, findPreset, fillPresetSelect } from '../ui/presets.js';
-import { setStatus, exportSvg, nextFrame } from './shared.js';
+import { mountSteps, completedSteps } from '../ui/steps-panel.js';
+import { findPreset, fillPresetSelect } from '../ui/presets.js';
+import { nextFrame } from './shared.js';
 
+const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const $ = id => document.getElementById(id);
+const dock = document.querySelector('.dock');
 const els = {
     preset: $('preset'),
     target: $('target'),
     derive: $('derive'),
-    status: $('status'),
-    svg: $('tree'),
-    empty: $('canvas-empty'),
-    summary: $('tree-summary'),
+    badge: $('badge'),
+    badgeNote: $('badge-note'),
+    kicker: $('kicker'),
+    caption: $('caption'),
+    yieldBtn: $('yield-btn'),
+    yieldChip: $('yield-chip'),
+    yieldStr: $('yield-str'),
     steps: $('steps'),
-    exportBtn: $('export'),
-    order: $('order'),
+    stepsNote: $('steps-note'),
     practice: $('practice'),
-    prompt: $('practice-prompt'),
-    choices: $('practice-choices'),
-    feedback: $('practice-feedback'),
+    pracTitle: $('prac-title'),
+    pracScore: $('prac-score'),
+    pracNote: $('prac-note'),
+    choices: $('choices'),
+    play: dock.querySelector('[data-act="play"]'),
+    back: dock.querySelector('[data-act="back"]'),
+    forward: dock.querySelector('[data-act="forward"]'),
+    roll: dock.querySelector('.dock__roll-col'),
+    total: dock.querySelector('.dock__total'),
+    ticks: dock.querySelector('.dock__ticks'),
+    modeSeg: document.querySelector('.seg--mode'),
+    orderSeg: document.querySelector('.seg--order'),
+    speedSeg: document.querySelector('.seg--speed'),
 };
 
-const view = createTreeView(els.svg);
-const controls = mountControls($('playbar'));
+const view = createTreeView($('tree'));
 
 const state = {
-    grammar: null,
-    tokens: null,
-    leftmost: null,     // { derivation, tree }
-    rightmost: null,
     order: 'leftmost',
     mode: 'auto',
-    timeline: null,
+    speed: 1,
+    grammar: null,
+    tokens: null,
+    found: null,        // { leftmost: {derivation, tree}, rightmost: {...} } or null
+    failure: null,      // why there is no tree
+    derivation: null,   // the one on screen
+    tl: null,
     stepsPanel: null,
-    practice: null,     // { steps, form }
+    practice: null,     // { steps, form, right, tries, pick, verdict }
 };
+
+// ---- segmented controls ----------------------------------------------------
+
+function setSeg(seg, attr, value) {
+    const buttons = [...seg.querySelectorAll(`button[data-${attr}]`)];
+    const i = Math.max(0, buttons.findIndex(b => b.dataset[attr] === String(value)));
+    buttons.forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+    const thumb = seg.querySelector('.seg__thumb');
+    thumb.style.width = `calc((100% - 6px) / ${buttons.length})`;
+    thumb.style.transform = `translateX(${i * 100}%)`;
+    seg.dataset.value = value;
+}
+
+els.speedSeg.innerHTML = '<span class="seg__thumb" aria-hidden="true"></span>'
+    + SPEEDS.map(v => `<button type="button" data-speed="${v}" aria-pressed="false">${v}×</button>`).join('');
+setSeg(els.speedSeg, 'speed', 1);
+setSeg(els.modeSeg, 'mode', 'auto');
+setSeg(els.orderSeg, 'order', 'leftmost');
+
+els.speedSeg.addEventListener('click', e => {
+    const b = e.target.closest('button[data-speed]');
+    if (!b) return;
+    state.speed = Number(b.dataset.speed);
+    setSeg(els.speedSeg, 'speed', b.dataset.speed);
+    if (state.tl) state.tl.setSpeed(state.speed);
+});
+els.orderSeg.addEventListener('click', e => {
+    const b = e.target.closest('button[data-order]');
+    if (!b || b.dataset.order === state.order) return;
+    state.order = b.dataset.order;
+    setSeg(els.orderSeg, 'order', state.order);
+    if (!state.found) return render();
+    setBadgeFound();
+    if (state.mode === 'practice') startPractice();
+    else showAuto(false);
+});
+els.modeSeg.addEventListener('click', e => {
+    const b = e.target.closest('button[data-mode]');
+    if (!b || b.dataset.mode === state.mode) return;
+    state.mode = b.dataset.mode;
+    setSeg(els.modeSeg, 'mode', state.mode);
+    els.practice.hidden = state.mode !== 'practice';
+    if (!state.found) return render();
+    if (state.mode === 'practice') startPractice();
+    else showAuto(false);
+});
+
+// ---- grammar, string, derive -----------------------------------------------
 
 const editor = mountEditor($('editor'), result => {
     const preset = findPreset(els.preset.value);
     if (preset && result.text !== preset.grammar) els.preset.value = '';
-});
+    els.derive.disabled = result.errors.length > 0;
+}, { label: null });
 
-fillPresetSelect(els.preset);
+fillPresetSelect(els.preset, p => p.visualizer);
 els.preset.addEventListener('change', () => {
     const preset = findPreset(els.preset.value);
     if (!preset) return;
     editor.setText(preset.grammar);
     els.target.value = preset.target;
-    derive();
+    derive(true);
 });
-
-els.derive.addEventListener('click', derive);
+els.derive.addEventListener('click', () => derive(true));
 els.target.addEventListener('keydown', e => {
-    if (e.key === 'Enter') derive();
+    if (e.key === 'Enter') derive(true);
 });
+els.target.addEventListener('input', () => els.target.setAttribute('aria-invalid', 'false'));
 
-els.order.addEventListener('click', e => {
-    const button = e.target.closest('button[data-order]');
-    if (!button || button.dataset.order === state.order || state.mode !== 'auto') return;
-    state.order = button.dataset.order;
-    pressed(els.order, 'order', state.order);
-    if (state.leftmost) show(state.timeline ? state.timeline.stepAt() : 0);
-});
-
-document.querySelector('[aria-labelledby="mode-label"]').addEventListener('click', e => {
-    const button = e.target.closest('button[data-mode]');
-    if (!button || button.dataset.mode === state.mode) return;
-    setMode(button.dataset.mode);
-});
-
-$('practice-reset').addEventListener('click', startPractice);
-els.exportBtn.addEventListener('click', () => exportSvg(els.svg, 'derivation-tree.svg'));
-
-// ---------------------------------------------------------------------------
-
-function pressed(group, attr, value) {
-    group.querySelectorAll(`button[data-${attr}]`).forEach(b => {
-        b.setAttribute('aria-pressed', String(b.dataset[attr] === value));
-    });
+function setBadge(kind, icon, text, note) {
+    els.badge.dataset.kind = kind;
+    els.badge.querySelector('.vz-badge__icon').textContent = icon;
+    els.badge.querySelector('.vz-badge__text').textContent = text;
+    els.badgeNote.textContent = note;
 }
 
-function reset(message) {
-    if (state.timeline) state.timeline.pause();
-    if (state.stepsPanel) state.stepsPanel.destroy();
-    state.timeline = null;
-    state.stepsPanel = null;
-    state.leftmost = state.rightmost = null;
-    view.clear();
-    els.steps.replaceChildren();
-    els.empty.hidden = false;
-    els.empty.textContent = message;
-    els.exportBtn.disabled = true;
-    controls.setTimeline(null);
+function setBadgeFound() {
+    const n = state.found.leftmost.derivation.steps.length;
+    setBadge('ok', '✓', 'Derivable', `${n} step${n === 1 ? '' : 's'}, ${state.order}`);
 }
 
-async function derive() {
+async function derive(autoplay) {
     const result = editor.result();
-    if (!result || result.errors.length > 0 || !result.grammar) {
-        setStatus(els.status, 'bad', 'Fix the grammar first');
-        reset('The grammar has errors. See the messages under the editor.');
-        return;
-    }
-
-    setStatus(els.status, 'info', 'Searching…');
+    if (!result || result.errors.length) return;
+    setBadge('info', '…', 'Searching', '');
+    els.derive.disabled = true;
     await nextFrame();
+    await new Promise(r => setTimeout(r, 250));
+    els.derive.disabled = false;
 
     const grammar = result.grammar;
-    const out = findLeftmost(grammar, els.target.value);
+    const input = els.target.value;
+    state.grammar = grammar;
+    state.found = null;
+    state.failure = null;
+
+    const { tokens, error } = tokenizeTarget(input, grammar);
+    if (!tokens) {
+        const symbol = (error.match(/'(.+?)'/) || [])[1] || input;
+        setBadge('bad', '✕', 'Not derivable', `"${symbol}" is not a terminal here`);
+        els.target.setAttribute('aria-invalid', 'true');
+        return clearTree();
+    }
+    state.tokens = tokens;
+
+    const out = findLeftmost(grammar, tokens);
     if (!out.found) {
-        if (out.reason.startsWith('limit')) {
-            setStatus(els.status, 'warn', 'Not found within the search limit');
-        } else if (out.reason === 'not derivable' || out.reason.startsWith('not derivable')) {
-            setStatus(els.status, 'bad', 'Not derivable');
-        } else {
-            setStatus(els.status, 'bad', out.reason);
-        }
-        reset('No derivation to show for this string.');
-        return;
+        setBadge('bad', '✕', 'Not derivable', out.reason.startsWith('limit') ? 'Search limit reached' : 'No derivation exists');
+        return clearTree();
     }
 
-    state.grammar = grammar;
-    state.tokens = tokenizeTarget(els.target.value, grammar).tokens;
-    const lmTree = buildTree(out.derivation, grammar);
-    const rmDerivation = toRightmost(lmTree);
-    state.leftmost = { derivation: out.derivation, tree: lmTree };
-    state.rightmost = { derivation: rmDerivation, tree: buildTree(rmDerivation, grammar) };
-
-    const k = out.derivation.steps.length;
-    setStatus(els.status, 'ok', `Derivable · ${k} step${k === 1 ? '' : 's'}`);
-
+    const tree = buildTree(out.derivation, grammar);
+    const rightmost = toRightmost(tree);
+    state.found = {
+        leftmost: { derivation: out.derivation, tree },
+        rightmost: { derivation: rightmost, tree: buildTree(rightmost, grammar) },
+    };
+    setBadgeFound();
     if (state.mode === 'practice') startPractice();
-    else show(0);
+    else showAuto(autoplay);
 }
 
-/** Build the timeline for the current order and land on `step`. */
-function show(step) {
-    const { derivation, tree } = state.order === 'leftmost' ? state.leftmost : state.rightmost;
-    const tl = mountTimeline(derivation, tree, { yield: true });
-    // A1: on a fresh derive the root grows in; on an order switch, land on the same step.
-    if (step > 0) tl.seekToStep(Math.min(step, derivation.steps.length));
-    else tl.playTo(tl.stepEnd(0));
-}
+// ---- the tree and its timeline -----------------------------------------------
 
-function mountTimeline(derivation, tree, opts) {
-    if (state.timeline) state.timeline.pause();
+function mount(derivation, tree, opts) {
+    if (state.tl) {
+        state.tl.pause();
+        if (state.tl.dispose) state.tl.dispose();
+    }
     if (state.stepsPanel) state.stepsPanel.destroy();
     view.clear();
-    els.empty.hidden = true;
-    els.exportBtn.disabled = false;
 
-    const tl = buildSequence(derivation, tree, view, opts);
-    const expandedAt = new Map(preorder(tree).filter(n => n.expandedAtStep).map(n => [n.expandedAtStep, n]));
-    const total = derivation.steps.length;
-    tl.on('step', k => {
-        els.summary.textContent = k === 0
-            ? `Start symbol ${tree.symbol}. ${total} steps to go.`
-            : `Step ${k} of ${total}: ${productionLabel(expandedAt.get(k))}`;
-    });
-
-    state.timeline = tl;
-    state.stepsPanel = mountSteps(els.steps, derivation, tl);
-    controls.setTimeline(tl);
+    const tl = buildSequence(derivation, tree, view, { character: true, ...opts });
+    tl.setSpeed(state.speed);
+    tl.on('time', render);
+    tl.on('state', render);
+    state.tl = tl;
+    state.derivation = derivation;
+    state.stepsPanel = mountSteps(els.steps, derivation, tl, i => (state.mode === 'practice' ? undoTo(i) : go(i)));
+    buildTicks(derivation.steps.length);
     return tl;
 }
 
-// ---- Practice mode (F13) -------------------------------------------------
+function clearTree() {
+    if (state.tl) {
+        state.tl.pause();
+        if (state.tl.dispose) state.tl.dispose();
+    }
+    if (state.stepsPanel) state.stepsPanel.destroy();
+    state.tl = null;
+    state.derivation = null;
+    state.stepsPanel = null;
+    view.clear();
+    els.steps.replaceChildren();
+    els.choices.replaceChildren();
+    buildTicks(0);
+    render();
+}
 
-function setMode(mode) {
-    state.mode = mode;
-    pressed(document.querySelector('[aria-labelledby="mode-label"]'), 'mode', mode);
-    els.practice.hidden = mode !== 'practice';
-    els.order.querySelectorAll('button').forEach(b => { b.disabled = mode === 'practice'; });
-    if (!state.leftmost) return;
-    if (mode === 'practice') {
-        state.order = 'leftmost';
-        pressed(els.order, 'order', 'leftmost');
-        startPractice();
+function showAuto(autoplay) {
+    const { derivation, tree } = state.found[state.order];
+    const tl = mount(derivation, tree, { yield: true });
+    tl.playTo(tl.stepEnd(0));
+    if (autoplay) setTimeout(() => {
+        if (state.tl === tl && !tl.playing) tl.playTo(tl.stepEnd(stepCount()));
+    }, 700);
+    render();
+}
+
+const stepCount = () => (state.derivation ? state.derivation.steps.length : 0);
+const markerStart = i => state.tl.markers.find(m => m.step === i).start;
+
+/** Move to "i steps done", animating: quick when jumping, normal for one step. */
+function go(i) {
+    const tl = state.tl;
+    if (!tl) return;
+    i = Math.max(0, Math.min(stepCount(), i));
+    const target = tl.stepEnd(i);
+    const done = completedSteps(tl);
+    if (target > tl.time) {
+        if (i === done + 1) {
+            if (tl.time < markerStart(i)) tl.seek(markerStart(i)); // skip the pause between steps
+            tl.playTo(target);
+        } else {
+            tl.playTo(target, { rate: Math.max(1, (target - tl.time) / (700 * tl.speed)) });
+        }
     } else {
-        show(0);
+        tl.playTo(target, { rate: Math.max(1.5, (tl.time - target) / (450 * tl.speed)) });
     }
 }
 
-function startPractice() {
-    if (!state.leftmost) {
-        els.prompt.textContent = 'Derive a string first, then build its tree yourself.';
-        els.choices.replaceChildren();
-        return;
-    }
-    state.practice = { steps: [], form: [state.grammar.start] };
-    els.feedback.textContent = '';
-    renderPractice(false);
+function togglePlay() {
+    const tl = state.tl;
+    if (!tl || state.mode !== 'auto' || !stepCount()) return;
+    if (tl.playing) return tl.pause();
+    const end = tl.stepEnd(stepCount());
+    if (tl.time >= end - 1) tl.seek(tl.stepEnd(0));
+    tl.playTo(end);
 }
+
+function restart() {
+    if (state.mode === 'practice') return startPractice();
+    go(0);
+}
+
+dock.addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b || b.disabled) return;
+    const act = b.dataset.act;
+    if (act === 'play') togglePlay();
+    else if (act === 'restart') restart();
+    else if (act === 'back') state.mode === 'practice' ? undoTo(stepCount() - 1) : go(completedSteps(state.tl) - 1);
+    else if (act === 'forward') go(completedSteps(state.tl) + 1);
+});
+
+els.yieldBtn.addEventListener('click', () => {
+    const tl = state.tl;
+    if (!tl) return;
+    const end = tl.stepEnd(stepCount());
+    if (tl.time > end + 1) tl.playTo(end, { rate: 1.5 });
+    else tl.playTo(tl.duration);
+});
+
+document.addEventListener('keydown', e => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!state.tl) return;
+    if (e.key === ' ' && tag !== 'button') {
+        e.preventDefault();
+        togglePlay();
+    } else if (e.key === 'ArrowRight' && state.mode === 'auto') {
+        go(completedSteps(state.tl) + 1);
+    } else if (e.key === 'ArrowLeft') {
+        state.mode === 'practice' ? undoTo(stepCount() - 1) : go(completedSteps(state.tl) - 1);
+    } else if (e.key === 'r' || e.key === 'R') {
+        restart();
+    }
+});
+
+// ---- dock and caption --------------------------------------------------------
+
+function buildTicks(n) {
+    els.ticks.replaceChildren(...Array.from({ length: n }, (_, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'dock__tick';
+        b.setAttribute('aria-label', `Go to step ${i + 1}`);
+        b.appendChild(document.createElement('span'));
+        b.addEventListener('click', () => (state.mode === 'practice' ? undoTo(i + 1) : go(i + 1)));
+        return b;
+    }));
+    els.roll.replaceChildren(...Array.from({ length: n + 1 }, (_, i) => {
+        const s = document.createElement('span');
+        s.textContent = i;
+        return s;
+    }));
+}
+
+const yieldText = () => (state.tokens && state.tokens.length ? state.tokens.join(' ') : 'ε');
+
+function render() {
+    const tl = state.tl;
+    const N = stepCount();
+    const k = tl ? completedSteps(tl) : 0;
+    const practice = state.mode === 'practice';
+    const playing = !!tl && tl.playing && !practice;
+    const end = tl ? tl.stepEnd(N) : 0;
+    const finished = !!tl && N > 0 && (practice ? isPracticeDone() : k >= N);
+
+    // Caption over the stage.
+    if (!tl) {
+        els.kicker.textContent = 'NO TREE';
+        els.caption.textContent = 'Fix the grammar or string, then press Derive.';
+    } else if (finished) {
+        els.kicker.textContent = 'FINISHED';
+        els.caption.textContent = `Done. The leaves spell ${yieldText()}.`;
+    } else if (practice) {
+        const lhs = practiceLhs();
+        els.kicker.textContent = `STEP ${k + 1}`;
+        els.caption.textContent = lhs ? `Pick a production for the highlighted ${lhs}.` : '';
+    } else {
+        const step = state.derivation.steps[k];
+        els.kicker.textContent = `STEP ${k + 1} OF ${N}`;
+        els.caption.textContent = k === 0 && !playing && tl.time <= tl.stepEnd(0) + 1
+            ? `Ready. Press play to start from ${state.derivation.steps[0].form[0]}.`
+            : `Expand ${step.lhs} with ${step.lhs} → ${step.rhs.length ? step.rhs.join(' ') : 'ε'}`;
+    }
+
+    // Dock.
+    els.play.classList.toggle('is-playing', playing);
+    els.play.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    els.play.disabled = practice || !N;
+    els.back.disabled = !tl || (practice ? N === 0 : k === 0 && tl.time <= tl.stepEnd(0) + 1);
+    els.forward.disabled = !tl || practice || k >= N;
+    els.roll.style.transform = `translateY(-${k * 20}px)`;
+    els.total.textContent = `/ ${practice ? Math.max(N, state.found ? state.found.leftmost.derivation.steps.length : 0) : N}`;
+    [...els.ticks.children].forEach((tick, i) => {
+        const fill = tl ? Math.min(1, Math.max(0, (tl.time - markerStart(i + 1)) / BEAT_MS)) : 0;
+        tick.firstChild.style.transform = `scaleX(${fill})`;
+        tick.classList.toggle('is-last', i === k - 1);
+    });
+
+    // Yield.
+    const canYield = finished && k >= N && tl.yieldStart != null;
+    els.yieldBtn.hidden = !canYield;
+    els.yieldBtn.textContent = tl && tl.time > end + 1 ? 'Back to tree' : 'Show yield';
+    els.yieldStr.textContent = yieldText();
+    els.yieldChip.classList.toggle('is-visible', canYield && tl.time >= tl.yieldStart + YIELD_MS * 0.65);
+
+    els.stepsNote.textContent = `${state.order === 'leftmost' ? 'Leftmost' : 'Rightmost'}. The underlined symbol is replaced next.`;
+}
+
+// ---- practice (F13) ----------------------------------------------------------
+
+const isNT = sym => state.grammar.isNonterminal(sym);
+
+function practiceIndex(form) {
+    if (state.order === 'leftmost') return form.findIndex(isNT);
+    for (let i = form.length - 1; i >= 0; i--) if (isNT(form[i])) return i;
+    return -1;
+}
+const practiceLhs = () => {
+    if (!state.practice) return null;
+    const i = practiceIndex(state.practice.form);
+    return i === -1 ? null : state.practice.form[i];
+};
+const isPracticeDone = () => !!state.practice && practiceIndex(state.practice.form) === -1;
 
 /** Can `form` still derive the target string? Exact check with the Earley recognizer. */
 function canDerive(form) {
@@ -211,72 +396,106 @@ function canDerive(form) {
     return recognizes(grammar, state.tokens);
 }
 
-function renderPractice(animateLast) {
-    const { steps, form } = state.practice;
-    const derivation = { order: 'leftmost', steps, result: form };
+function startPractice() {
+    state.practice = { steps: [], form: [state.grammar.start], right: 0, tries: 0, pick: null, verdict: null };
+    showPractice(false);
+}
+
+function undoTo(n) {
+    const p = state.practice;
+    if (!p || n < 0 || n >= p.steps.length) return;
+    p.form = p.steps[n].form;
+    p.steps = p.steps.slice(0, n);
+    p.pick = p.verdict = null;
+    showPractice(false);
+}
+
+function showPractice(animateLast) {
+    const p = state.practice;
+    const derivation = { order: state.order, steps: p.steps, result: p.form };
     const tree = buildTree(derivation, state.grammar);
-    const index = form.findIndex(sym => state.grammar.isNonterminal(sym));
-    const done = index === -1;
+    const index = practiceIndex(p.form);
+    const open = preorder(tree).filter(n => n.children.length === 0 && n.kind !== 'epsilon');
+    const pending = index === -1 ? null : open[index].id;
 
-    const tl = mountTimeline(derivation, tree, { yield: done });
-    if (animateLast && steps.length > 0) {
-        tl.seekToStep(steps.length - 1);
-        tl.playTo(done ? tl.duration : tl.stepEnd(steps.length));
+    const tl = mount(derivation, tree, { pending, yield: pending == null });
+    const n = p.steps.length;
+    if (animateLast && n > 0) {
+        tl.seek(markerStart(n));
+        tl.playTo(pending == null ? tl.stepEnd(n) : tl.duration);
+    } else if (n === 0) {
+        tl.playTo(tl.duration);
     } else {
-        tl.seekToStep(steps.length);
+        tl.seek(pending == null ? tl.stepEnd(n) : tl.duration);
     }
+    renderChoices();
+    render();
+}
 
+function renderChoices() {
+    const p = state.practice;
+    const index = practiceIndex(p.form);
+    els.pracScore.textContent = `${p.right} correct of ${p.tries}`;
     els.choices.replaceChildren();
-    if (done) {
-        els.prompt.innerHTML = '<strong>Done!</strong> The leaves now spell the target string.';
+    if (index === -1) {
+        els.pracTitle.textContent = 'All done';
+        els.pracNote.textContent = 'Finished. Press Restart to go again.';
         return;
     }
-
-    const lhs = form[index];
-    els.prompt.innerHTML = '';
-    els.prompt.append('Expand the leftmost nonterminal ', strong(lhs), '. Which production?');
-
+    const lhs = p.form[index];
+    els.pracTitle.textContent = `Expand ${lhs}`;
     for (const rhs of state.grammar.productions.get(lhs) || []) {
-        const li = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'choice';
-        button.textContent = `${lhs} → ${rhs.length ? rhs.join(rhs.some(s => s.length > 1) ? ' ' : '') : 'ε'}`;
-        button.addEventListener('click', () => choose(button, index, lhs, rhs));
-        li.appendChild(button);
-        els.choices.appendChild(li);
+        const text = `${lhs} → ${rhs.length ? rhs.join(' ') : 'ε'}`;
+        const picked = p.pick === text;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'vz-choice'
+            + (picked && p.verdict === 'right' ? ' is-right' : '')
+            + (picked && p.verdict === 'wrong' ? ' is-wrong' : '');
+        b.disabled = p.verdict === 'right';
+        b.innerHTML = '<span class="vz-choice__dot" aria-hidden="true"></span><span class="vz-choice__text"></span><span class="vz-choice__tag"></span>';
+        b.querySelector('.vz-choice__text').textContent = text;
+        b.querySelector('.vz-choice__tag').textContent = picked ? (p.verdict === 'right' ? 'Correct' : 'Not this one') : '';
+        b.addEventListener('click', () => choose(index, lhs, rhs, text));
+        els.choices.appendChild(b);
     }
+    els.pracNote.textContent = p.verdict === 'wrong'
+        ? `That choice can't produce ${yieldText()} from here. Try another.`
+        : p.verdict === 'right'
+            ? 'Correct. Watch the builder plant it.'
+            : `Goal: ${yieldText()}. Expand the ${state.order} ${lhs}.`;
 }
 
-function choose(button, index, lhs, rhs) {
-    const { form } = state.practice;
-    const next = [...form.slice(0, index), ...rhs, ...form.slice(index + 1)];
+function choose(index, lhs, rhs, text) {
+    const p = state.practice;
+    if (p.verdict === 'right') return;
+    const next = [...p.form.slice(0, index), ...rhs, ...p.form.slice(index + 1)];
+    p.tries += 1;
+    p.pick = text;
     if (!canDerive(next)) {
-        button.classList.remove('is-wrong');
-        void button.offsetWidth; // restart the shake animation
-        button.classList.add('is-wrong');
-        els.feedback.textContent = `${button.textContent} would give ${next.join(' ') || 'ε'}, which can no longer derive the string. Try another.`;
+        p.verdict = 'wrong';
+        renderChoices();
         return;
     }
-    state.practice.steps.push({ form, index, lhs, rhs });
-    state.practice.form = next;
-    els.feedback.textContent = `✓ ${button.textContent}`;
-    renderPractice(true);
-    const first = els.choices.querySelector('.choice');
-    if (first) first.focus();
+    p.verdict = 'right';
+    p.right += 1;
+    renderChoices();
+    setTimeout(() => {
+        if (state.practice !== p) return;
+        p.steps.push({ form: p.form, index, lhs, rhs });
+        p.form = next;
+        p.pick = p.verdict = null;
+        showPractice(true);
+        const first = els.choices.querySelector('button');
+        if (first) first.focus({ preventScroll: true });
+    }, 650);
 }
 
-function strong(text) {
-    const s = document.createElement('strong');
-    s.className = 'mono';
-    s.textContent = text;
-    return s;
-}
+// ---- start: the first preset, playing on its own -----------------------------
 
-// ---- start with the first preset -------------------------------------------
-
-const first = PRESETS[0];
+const first = findPreset('expr');
 els.preset.value = first.id;
 editor.setText(first.grammar);
 els.target.value = first.target;
-derive();
+render();
+derive(true);

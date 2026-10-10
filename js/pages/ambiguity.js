@@ -98,6 +98,12 @@ async function explore() {
     );
 }
 
+function code(text) {
+    const c = document.createElement('code');
+    c.textContent = text;
+    return c;
+}
+
 const first = findPreset('expr');
 preset.value = first.id;
 editor.setText(first.grammar);

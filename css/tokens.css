@@ -1,99 +1,196 @@
-/* Design tokens. PLACEHOLDER values: the visual direction is not decided yet.
-   Swap these for the values from the design hand-off; no other file should
-   hard-code a colour, font, spacing or radius. */
+/* Design tokens, from the Claude Design hand-off (Visualizer.dc.html):
+   Apple-like, system font stack, graphite accent, light + dark, non-pill radii.
+   Theme: <html data-theme="light|dark"> wins; otherwise the system setting. */
 
 :root {
-    /* surfaces and text */
-    --bg: #f6f7f9;
-    --surface: #ffffff;
-    --surface-2: #eef0f4;
-    --fg: #1d2024;
-    --muted: #5d636d;
-    --line: #d9dde3;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter Tight", "Segoe UI", sans-serif;
+    --font-mono: "SF Mono", "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+    --font-display: var(--font-sans);
+    --font-body: var(--font-sans);
 
-    /* brand / interaction */
-    --accent: #3d5a99;
-    --accent-fg: #ffffff;
-    --accent-soft: #e3e9f6;
-    --focus: #d9622b;
-
-    /* status */
-    --ok: #2f7d5b;
-    --ok-soft: #dcf1e6;
-    --bad: #b3372f;
-    --bad-soft: #f8e1df;
-    --warn: #9a6a12;
-    --warn-soft: #f7ecd5;
-
-    /* tree */
-    --node-nt: #3d5a99;
-    --node-nt-fill: #dbe4f6;
-    --node-term: #2f7d5b;
-    --node-term-fill: #d5efe2;
-    --node-eps: #8a8f98;
-    --node-active: #d9622b;
-    --edge: #8a8f98;
-    --diff-highlight: #e8a33d;
-
-    /* type */
-    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
     --text-s: 0.875rem;
     --text-m: 1rem;
     --text-l: 1.25rem;
     --text-xl: 1.75rem;
-    --text-xxl: clamp(2.1rem, 5vw, 3.4rem);
+    --text-xxl: clamp(2.6rem, 6vw, 5rem);
 
-    /* space, shape, depth */
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
     --space-4: 16px;
     --space-5: 24px;
     --space-6: 40px;
-    --radius-s: 6px;
-    --radius-m: 12px;
-    --shadow: 0 1px 2px rgb(20 24 31 / 0.06), 0 4px 16px rgb(20 24 31 / 0.06);
+    --radius-s: 10px;
+    --radius-m: 24px;
 
-    /* motion (UI only; tree timing lives in js/anim/sequences.js) */
-    --dur-fast: 120ms;
-    --dur-mid: 240ms;
+    --dur-fast: 160ms;
+    --dur-mid: 300ms;
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --char-body: #F2B705;
+    --char-skin: #E0AC85;
+    --char-tie: #B3261E;
 }
 
+/* ---- light ---- */
+:root {
+    --bg: #FBFBFD;
+    --bg-2: #F2F2F5;
+    --surface: #FFFFFF;
+    --nav: rgba(251, 251, 253, 0.8);
+    --fill: rgba(118, 118, 128, 0.12);
+    --fill-hover: rgba(118, 118, 128, 0.2);
+    --thumb: #FFFFFF;
+    --dot: rgba(0, 0, 0, 0.07);
+    --stage: radial-gradient(120% 90% at 50% 0%, #FFFFFF 0%, #F3F3F6 60%, #ECECF0 100%);
+    --dock: rgba(29, 29, 31, 0.88);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06), 0 24px 60px rgba(0, 0, 0, 0.05);
+    --shadow-stage: inset 0 0 0 1px rgba(0, 0, 0, 0.05), 0 30px 80px rgba(0, 0, 0, 0.08);
+    --ink: #1D1D1F;
+    --ink-2: #424245;
+    --ink-3: #6E6E73;
+    --rule-2: rgba(0, 0, 0, 0.08);
+    --accent: #1D1D1F;
+    --accent-hover: #000000;
+    --on-accent: #FFFFFF;
+    --focus: rgba(0, 113, 227, 0.3);
+    --ok: #1A7F37;
+    --ok-soft: #E3F5E8;
+    --err: #D70015;
+    --err-soft: #FFE9EB;
+    --warn: #9A5B00;
+    --warn-soft: #FFF1DC;
+
+    --tree-nt: #1D1D1F;
+    --tree-nt-ink: #FFFFFF;
+    --tree-active: #FF7A00;
+    --tree-active-on: #1D1D1F;
+    --tree-active-ink: #C24E00;
+    --tree-active-soft: #FFEBD6;
+    --tree-ink: #1D1D1F;
+    --tree-t: #0071E3;
+    --tree-t-ink: #0058B0;
+    --tree-edge: #8E8E93;
+    --tree-muted: #8E8E93;
+    --tree-surface: #FFFFFF;
+    --tree-shadow: rgba(0, 0, 0, 0.09);
+    --diff-highlight: #E8A33D;
+
+    --char-ink: #1D1D1F;
+    --char-hair: #5A4232;
+}
+
+/* ---- dark: written twice, for the system setting and for the toggle ---- */
 @media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #14171c;
-        --surface: #1c2027;
-        --surface-2: #252a33;
-        --fg: #e8eaee;
-        --muted: #a2a8b3;
-        --line: #343a45;
-
-        --accent: #8eaaf0;
-        --accent-fg: #10131a;
-        --accent-soft: #263453;
-        --focus: #f08a55;
-
-        --ok: #6cc79c;
-        --ok-soft: #1d3a2d;
-        --bad: #f0857c;
-        --bad-soft: #43221f;
-        --warn: #e6b65c;
-        --warn-soft: #3e3119;
-
-        --node-nt: #8eaaf0;
-        --node-nt-fill: #263453;
-        --node-term: #6cc79c;
-        --node-term-fill: #1d3a2d;
-        --node-eps: #8a909b;
-        --node-active: #f08a55;
-        --edge: #6d7480;
-        --diff-highlight: #e8b04d;
-
-        --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+    :root:not([data-theme="light"]) {
+        --bg: #000000;
+        --bg-2: #1C1C1E;
+        --surface: #161618;
+        --nav: rgba(0, 0, 0, 0.75);
+        --fill: rgba(118, 118, 128, 0.26);
+        --fill-hover: rgba(118, 118, 128, 0.36);
+        --thumb: #636366;
+        --dot: rgba(255, 255, 255, 0.06);
+        --stage: radial-gradient(120% 90% at 50% 0%, #1E1E21 0%, #111113 65%, #0A0A0B 100%);
+        --dock: rgba(44, 44, 46, 0.88);
+        --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.5);
+        --shadow-stage: inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 30px 80px rgba(0, 0, 0, 0.6);
+        --ink: #F5F5F7;
+        --ink-2: #D2D2D7;
+        --ink-3: #A1A1A6;
+        --rule-2: rgba(255, 255, 255, 0.1);
+        --accent: #F5F5F7;
+        --accent-hover: #FFFFFF;
+        --on-accent: #1D1D1F;
+        --focus: rgba(41, 151, 255, 0.4);
+        --ok: #30D158;
+        --ok-soft: rgba(48, 209, 88, 0.16);
+        --err: #FF6961;
+        --err-soft: rgba(255, 105, 97, 0.16);
+        --warn: #FFB340;
+        --warn-soft: rgba(255, 179, 64, 0.16);
+        --tree-nt: #F5F5F7;
+        --tree-nt-ink: #1D1D1F;
+        --tree-active: #FF9F0A;
+        --tree-active-on: #1D1D1F;
+        --tree-active-ink: #FFB340;
+        --tree-active-soft: rgba(255, 159, 10, 0.2);
+        --tree-ink: #F5F5F7;
+        --tree-t: #2997FF;
+        --tree-t-ink: #64B5FF;
+        --tree-edge: #7C7C80;
+        --tree-muted: #8E8E93;
+        --tree-surface: #1C1C1E;
+        --tree-shadow: rgba(0, 0, 0, 0.55);
+        --diff-highlight: #E8B04D;
+        --char-ink: #D2D2D7;
+        --char-hair: #C9A27A;
     }
+}
+:root[data-theme="dark"] {
+    --bg: #000000;
+    --bg-2: #1C1C1E;
+    --surface: #161618;
+    --nav: rgba(0, 0, 0, 0.75);
+    --fill: rgba(118, 118, 128, 0.26);
+    --fill-hover: rgba(118, 118, 128, 0.36);
+    --thumb: #636366;
+    --dot: rgba(255, 255, 255, 0.06);
+    --stage: radial-gradient(120% 90% at 50% 0%, #1E1E21 0%, #111113 65%, #0A0A0B 100%);
+    --dock: rgba(44, 44, 46, 0.88);
+    --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.5);
+    --shadow-stage: inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 30px 80px rgba(0, 0, 0, 0.6);
+    --ink: #F5F5F7;
+    --ink-2: #D2D2D7;
+    --ink-3: #A1A1A6;
+    --rule-2: rgba(255, 255, 255, 0.1);
+    --accent: #F5F5F7;
+    --accent-hover: #FFFFFF;
+    --on-accent: #1D1D1F;
+    --focus: rgba(41, 151, 255, 0.4);
+    --ok: #30D158;
+    --ok-soft: rgba(48, 209, 88, 0.16);
+    --err: #FF6961;
+    --err-soft: rgba(255, 105, 97, 0.16);
+    --warn: #FFB340;
+    --warn-soft: rgba(255, 179, 64, 0.16);
+    --tree-nt: #F5F5F7;
+    --tree-nt-ink: #1D1D1F;
+    --tree-active: #FF9F0A;
+    --tree-active-on: #1D1D1F;
+    --tree-active-ink: #FFB340;
+    --tree-active-soft: rgba(255, 159, 10, 0.2);
+    --tree-ink: #F5F5F7;
+    --tree-t: #2997FF;
+    --tree-t-ink: #64B5FF;
+    --tree-edge: #7C7C80;
+    --tree-muted: #8E8E93;
+    --tree-surface: #1C1C1E;
+    --tree-shadow: rgba(0, 0, 0, 0.55);
+    --diff-highlight: #E8B04D;
+    --char-ink: #D2D2D7;
+    --char-hair: #C9A27A;
+}
+
+/* ---- names used by the other pages, mapped onto the design palette ---- */
+:root {
+    --fg: var(--ink);
+    --muted: var(--ink-3);
+    --line: var(--rule-2);
+    --surface-2: var(--bg-2);
+    --accent-fg: var(--on-accent);
+    --accent-soft: var(--fill);
+    --bad: var(--err);
+    --bad-soft: var(--err-soft);
+    --shadow: var(--shadow-card);
+    --node-nt: var(--tree-nt);
+    --node-nt-fill: var(--bg-2);
+    --node-term: var(--tree-t);
+    --node-term-fill: var(--tree-surface);
+    --node-eps: var(--tree-muted);
+    --node-active: var(--tree-active);
+    --edge: var(--tree-edge);
 }
 
 @media (prefers-reduced-motion: reduce) {
