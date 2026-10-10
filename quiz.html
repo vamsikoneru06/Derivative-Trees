@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quiz · Derivation Tree Explorer</title>
+    <meta name="description" content="Check your understanding of derivations, derivation trees and ambiguity.">
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <script type="module" src="js/pages/quiz.js"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <a class="brand" href="index.html">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 8 8 22M16 8l8 14" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="16" cy="7" r="4.5" fill="var(--accent)"/><rect x="4" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/><rect x="20" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/></svg>
+            Derivation Tree Explorer
+        </a>
+        <nav class="site-nav" aria-label="Main">
+            <a href="index.html">Home</a>
+            <a href="learn.html">Learn</a>
+            <a href="visualizer.html">Visualizer</a>
+            <a href="ambiguity.html">Ambiguity</a>
+            <a href="quiz.html" aria-current="page">Quiz</a>
+            <a href="team.html">Team</a>
+        </nav>
+    </header>
+
+    <main id="main" class="page narrow">
+        <h1>Quiz</h1>
+        <div class="row" style="justify-content: space-between; margin-bottom: var(--space-3)">
+            <span id="progress" class="hint"></span>
+            <span id="score" class="badge badge--info"></span>
+        </div>
+        <div class="toc__progress" aria-hidden="true"><span id="bar"></span></div>
+        <section class="card" aria-live="polite">
+            <h2 id="question" style="font-size: var(--text-l)"></h2>
+            <ul id="options" class="choices"></ul>
+            <p id="explain" class="hint" style="margin-top: var(--space-4)"></p>
+            <div class="row" style="justify-content: flex-end">
+                <button id="next" class="btn btn--primary" type="button" hidden>Next question</button>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
