@@ -6,7 +6,7 @@ import { buildSequence, productionLabel } from '../anim/sequences.js';
 import { mountEditor } from '../ui/grammar-editor.js';
 import { mountControls } from '../ui/controls.js';
 import { findPreset, fillPresetSelect } from '../ui/presets.js';
-import { setStatus, nextFrame } from './shared.js';
+import { setStatus, nextFrame, unshared } from './shared.js';
 
 const $ = id => document.getElementById(id);
 const views = [createTreeView($('tree-1')), createTreeView($('tree-2'))];
@@ -96,38 +96,6 @@ async function explore() {
         ', Tree 2 uses ', code(label(t2, id2)),
         '. Highlighted nodes are the ones the other tree does not have.',
     );
-}
-
-/**
- * Nodes of `tree` with no identical subtree, covering the same part of the
- * string, in `other`. Shared pieces (like each lone `id`) stay plain.
- */
-function unshared(tree, other) {
-    const otherKeys = new Set(subtreeKeys(other).values());
-    const keys = subtreeKeys(tree);
-    return preorder(tree).filter(n => !otherKeys.has(keys.get(n)));
-}
-
-function subtreeKeys(root) {
-    const keys = new Map();
-    let pos = 0;
-    const walk = node => {
-        const start = pos;
-        let inner = node.symbol;
-        if (node.children.length > 0) inner = node.children.map(walk).join(',');
-        else if (node.kind !== 'epsilon') pos += 1;
-        const key = `${node.symbol}[${start}-${pos}](${inner})`;
-        keys.set(node, key);
-        return key;
-    };
-    walk(root);
-    return keys;
-}
-
-function code(text) {
-    const c = document.createElement('code');
-    c.textContent = text;
-    return c;
 }
 
 const first = findPreset('expr');

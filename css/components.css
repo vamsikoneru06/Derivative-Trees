@@ -301,3 +301,14 @@
 
 .team-card__role { color: var(--accent); font-weight: 700; font-size: var(--text-s); text-transform: uppercase; letter-spacing: 0.05em; }
 .team-card ul { padding-left: 1.2em; margin: 0 0 var(--space-4); }
+
+/* Learn page hand-built scenes (js/pages/learn.js) */
+.learn-glyph { font-family: var(--font-mono); font-size: 24px; font-weight: 700; fill: var(--fg); }
+.learn-glyph--nt { fill: var(--node-nt); }
+.learn-glyph--muted { fill: var(--muted); font-weight: 400; }
+.learn-label { font-family: var(--font-body); font-size: 15px; font-weight: 600; fill: var(--muted); }
+.learn-shape { stroke-width: 2.25; }
+.learn-shape--nt { fill: var(--node-nt-fill); stroke: var(--node-nt); }
+.learn-shape--term { fill: var(--node-term-fill); stroke: var(--node-term); }
+.learn-shape--eps { fill: none; stroke: var(--node-eps); stroke-dasharray: 3 4; }
+.learn-ring { fill: none; stroke: var(--node-active); stroke-width: 3; }

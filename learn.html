@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Learn · Derivation Tree Explorer</title>
+    <meta name="description" content="Context-free grammars, derivations, derivation trees, yield and ambiguity, each with a short animation.">
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/tree.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <script type="module" src="js/pages/learn.js"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <a class="brand" href="index.html">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 8 8 22M16 8l8 14" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="16" cy="7" r="4.5" fill="var(--accent)"/><rect x="4" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/><rect x="20" y="19" width="8" height="8" rx="2" fill="var(--node-term)"/></svg>
+            Derivation Tree Explorer
+        </a>
+        <nav class="site-nav" aria-label="Main">
+            <a href="index.html">Home</a>
+            <a href="learn.html" aria-current="page">Learn</a>
+            <a href="visualizer.html">Visualizer</a>
+            <a href="ambiguity.html">Ambiguity</a>
+            <a href="quiz.html">Quiz</a>
+            <a href="team.html">Team</a>
+        </nav>
+    </header>
+
+    <main id="main" class="page learn">
+        <nav class="learn-toc toc" aria-label="On this page">
+            <div class="toc__progress" aria-hidden="true"><span></span></div>
+            <ol>
+                <li><a href="#cfg">1. Context-free grammars</a></li>
+                <li><a href="#derivations">2. Derivations</a></li>
+                <li><a href="#order">3. Leftmost and rightmost</a></li>
+                <li><a href="#trees">4. Derivation trees</a></li>
+                <li><a href="#yield">5. Yield</a></li>
+                <li><a href="#ambiguity">6. Ambiguity</a></li>
+            </ol>
+        </nav>
+
+        <div>
+            <section class="learn-section" id="cfg">
+                <div>
+                    <h2>1. What is a context-free grammar?</h2>
+                    <p>A <strong>context-free grammar</strong> (CFG) is a small set of rewriting rules. It has four parts:</p>
+                    <ul>
+                        <li><strong>Nonterminals</strong> (variables), written in UPPERCASE, such as <code>S</code>. They still need to be rewritten.</li>
+                        <li><strong>Terminals</strong>, the actual characters of the language, such as <code>a</code> and <code>b</code>.</li>
+                        <li><strong>Productions</strong> such as <code>S → aSb</code>: “an <code>S</code> may be replaced by <code>aSb</code>”. The bar <code>|</code> lists alternatives, and <code>ε</code> is the empty string.</li>
+                        <li>A <strong>start symbol</strong>, where every derivation begins.</li>
+                    </ul>
+                    <p>“Context-free” means a rule can rewrite a nonterminal no matter what surrounds it.
+                        The grammar <code>S → aSb | ε</code> generates exactly the strings <code>aⁿbⁿ</code>.</p>
+                </div>
+                <div class="anim-box" aria-label="Animation: the parts of the grammar S → aSb | ε are labelled one by one">
+                    <svg id="anim-cfg" viewBox="0 0 400 300" aria-hidden="true"></svg>
+                    <button class="btn btn--small anim-box__replay" type="button">Replay</button>
+                </div>
+            </section>
+
+            <section class="learn-section" id="derivations">
+                <div>
+                    <h2>2. Derivations</h2>
+                    <p>A <strong>derivation</strong> starts from the start symbol and applies one production at a time.
+                        Each intermediate string is a <strong>sentential form</strong>, and we join them with <code>⇒</code>:</p>
+                    <p class="mono">S ⇒ aSb ⇒ aaSbb ⇒ aabb</p>
+                    <p>In each step one nonterminal (underlined in the animation) is replaced by the right-hand side of one of its rules.
+                        When no nonterminals are left, the derivation has produced a string of the language.</p>
+                </div>
+                <div class="anim-box" aria-label="Animation: S is rewritten step by step into aabb">
+                    <svg id="anim-derivation" viewBox="0 0 400 300" aria-hidden="true"></svg>
+                    <button class="btn btn--small anim-box__replay" type="button">Replay</button>
+                </div>
+            </section>
+
+            <section class="learn-section" id="order">
+                <div>
+                    <h2>3. Leftmost and rightmost derivations</h2>
+                    <p>When a sentential form contains several nonterminals, we must choose which one to rewrite.</p>
+                    <ul>
+                        <li>A <strong>leftmost</strong> derivation always rewrites the leftmost nonterminal.</li>
+                        <li>A <strong>rightmost</strong> derivation always rewrites the rightmost one.</li>
+                    </ul>
+                    <p>With <code>S → AB</code>, <code>A → aA | a</code>, <code>B → bB | b</code> and the string <code>aabb</code>,
+                        both orders use the same productions and end in <em>the same tree</em>. Only the order of growth differs.</p>
+                </div>
+                <div class="anim-box" aria-label="Animation: the same tree grown in leftmost order and in rightmost order">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;height:100%">
+                        <svg id="anim-order-left" aria-hidden="true"></svg>
+                        <svg id="anim-order-right" aria-hidden="true"></svg>
+                    </div>
+                    <span class="hint" style="position:absolute;left:12px;top:8px">leftmost</span>
+                    <span class="hint" style="position:absolute;left:52%;top:8px">rightmost</span>
+                    <button class="btn btn--small anim-box__replay" type="button">Replay</button>
+                </div>
+            </section>
+
+            <section class="learn-section" id="trees">
+                <div>
+                    <h2>4. Derivation (parse) trees</h2>
+                    <p>A <strong>derivation tree</strong> records which production was used where, without recording the order.</p>
+                    <ul>
+                        <li>The root is the start symbol.</li>
+                        <li>Each nonterminal node has the symbols of its production as children, left to right.</li>
+                        <li>Leaves are terminals or <code>ε</code>.</li>
+                    </ul>
+                    <p>Here is the tree for <code>id + id * id</code> under the unambiguous expression grammar
+                        <code>E → E + T | T</code>, <code>T → T * F | F</code>, <code>F → ( E ) | id</code>.</p>
+                </div>
+                <div class="anim-box" aria-label="Animation: the derivation tree for id + id * id grows">
+                    <svg id="anim-tree" aria-hidden="true"></svg>
+                    <button class="btn btn--small anim-box__replay" type="button">Replay</button>
+                </div>
+            </section>
+
+            <section class="learn-section" id="yield">
+                <div>
+                    <h2>5. Yield of a tree</h2>
+                    <p>The <strong>yield</strong> of a derivation tree is the string you get by reading its leaves from
+                        left to right, skipping <code>ε</code>.</p>
+                    <p>Every derivation tree whose root is the start symbol and whose leaves are all terminals yields a string of
+                        the language, and every string of the language is the yield of at least one such tree.</p>
+                    <p class="callout">The yield of this tree is <code>aabb</code>: the <code>ε</code> leaf contributes nothing.</p>
+                </div>
+                <div class="anim-box" aria-label="Animation: the leaves of the tree drop into a row that spells aabb">
+                    <svg id="anim-yield" aria-hidden="true"></svg>
+                    <button class="btn btn--small anim-box__replay" type="button">Replay</button>
+                </div>
+            </section>
+
+            <section class="learn-section" id="ambiguity">
+                <div>
+                    <h2>6. Ambiguity</h2>
+                    <p>A grammar is <strong>ambiguous</strong> if some string has <em>two different derivation trees</em>
+                        (equivalently, two different leftmost derivations).</p>
+                    <p>Under <code>E → E + E | E * E | id</code>, the string <code>id + id * id</code> can be grouped as
+                        <code>id + (id * id)</code> or as <code>(id + id) * id</code>. The highlighted nodes are where the trees differ.</p>
+                    <p>There is no general algorithm that decides whether a CFG is ambiguous. A search can find two trees
+                        for a particular string, but not finding them does not prove the grammar is unambiguous.</p>
+                    <p><a href="ambiguity.html">Try the ambiguity explorer →</a></p>
+                </div>
+                <div class="anim-box" aria-label="Animation: two different trees for id + id * id grow side by side">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;height:100%">
+                        <svg id="anim-amb-1" aria-hidden="true"></svg>
+                        <svg id="anim-amb-2" aria-hidden="true"></svg>
+                    </div>
+                    <button class="btn btn--small anim-box__replay" type="button">Replay</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        Notation: <code>→</code> in productions, <code>⇒</code> between sentential forms, <code>ε</code> for the empty string.
+    </footer>
+</body>
+</html>
