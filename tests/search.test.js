@@ -90,3 +90,32 @@ test('Presets derive strings of length 10 in under 1 s', () => {
         assert.ok(performance.now() - t0 < 1000, `${target} took too long`);
     }
 });
+
+const yieldOf = node => node.children.length === 0
+    ? (node.kind === 'terminal' ? [node.symbol] : [])
+    : node.children.flatMap(yieldOf);
+const shape = node => `${node.symbol}(${node.children.map(shape).join(',')})`;
+
+function assertTwoDistinctTrees(res, target) {
+    assert.strictEqual(res.ambiguous, true);
+    const [t1, t2] = res.trees;
+    assert.deepStrictEqual(yieldOf(t1), target);
+    assert.deepStrictEqual(yieldOf(t2), target);
+    assert.notStrictEqual(shape(t1), shape(t2));
+}
+
+test('Finds two trees when derivations of different lengths merge (unit rules)', () => {
+    // S => Y => a and S => X => Y => a: Y is reached at BFS levels 1 and 2.
+    const res = findTwoTrees(g(`S -> X | Y\nX -> Y\nY -> a`), 'a');
+    assertTwoDistinctTrees(res, ['a']);
+});
+
+test('Finds two trees through an ε-cycle without hanging', () => {
+    // S => SS => S (S -> ε) returns to the start form.
+    assertTwoDistinctTrees(findTwoTrees(PARENS, '()'), ['(', ')']);
+    assertTwoDistinctTrees(findTwoTrees(PARENS, '()()()'), ['(', ')', '(', ')', '(', ')']);
+});
+
+test('Both ambiguity trees for id+id*id yield the string', () => {
+    assertTwoDistinctTrees(findTwoTrees(EXPR, 'id+id*id'), ['id', '+', 'id', '*', 'id']);
+});

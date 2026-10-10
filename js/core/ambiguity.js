@@ -20,14 +20,12 @@ export function findTwoTrees(grammar, targetStr, limits = { maxNodes: 200000, ma
     const queue = [ [grammar.start] ];
     let head = 0;
 
-    // parents map: formKey -> Array of { parentForm: string[], step: Object }
-    const parents = new Map();
-    parents.set(grammar.start, []);
-
-    // BFS depth of each form. A parent record is kept only when the parent is exactly
-    // one level above, so parents[] never contains a cycle (e.g. S ⇒ SS ⇒ S via S → ε)
-    // and every walk back towards the start symbol terminates.
-    const depth = new Map([[grammar.start, 0]]);
+    // discovery: formKey -> the { parentForm, step } that first enqueued it (null for the
+    // start form). Following discovery parents walks a BFS tree, so it always ends at
+    // the start form. extras: every later, distinct arrival at a form, from any level,
+    // including back-edges such as SS => S via S -> ε.
+    const discovery = new Map([[grammar.start, null]]);
+    const extras = new Map();
 
     let foundTarget = false;
 
@@ -49,7 +47,6 @@ export function findTwoTrees(grammar, targetStr, limits = { maxNodes: 200000, ma
 
         const lhs = form[leftmostIndex];
         const productions = grammar.productions.get(lhs) || [];
-        const childDepth = depth.get(formKey) + 1;
 
         for (const rhs of productions) {
             const nextForm = [
@@ -65,61 +62,55 @@ export function findTwoTrees(grammar, targetStr, limits = { maxNodes: 200000, ma
                 step: { form: form, index: leftmostIndex, lhs: lhs, rhs: rhs }
             };
 
-            if (!parents.has(nextFormKey)) {
-                parents.set(nextFormKey, [stepRecord]);
-                depth.set(nextFormKey, childDepth);
+            if (!discovery.has(nextFormKey)) {
+                discovery.set(nextFormKey, stepRecord);
                 queue.push(nextForm);
-            } else if (depth.get(nextFormKey) === childDepth) {
-                const existing = parents.get(nextFormKey);
-                const isDuplicate = existing.some(e => 
-                    e.parentForm.join(' ') === formKey && 
-                    e.step.rhs.join(' ') === rhs.join(' ')
-                );
-                
-                if (!isDuplicate) {
-                    existing.push(stepRecord);
-                }
+                continue;
+            }
+
+            const known = [discovery.get(nextFormKey), ...(extras.get(nextFormKey) || [])];
+            const isDuplicate = known.some(e => e &&
+                e.parentForm.join(' ') === formKey &&
+                e.step.rhs.join(' ') === rhs.join(' ')
+            );
+            if (!isDuplicate) {
+                if (!extras.has(nextFormKey)) extras.set(nextFormKey, []);
+                extras.get(nextFormKey).push(stepRecord);
             }
         }
     }
 
-    if (!foundTarget && !parents.has(targetKey)) {
+    if (!foundTarget && !discovery.has(targetKey)) {
         return { ambiguous: false, reason: "target not found or limit reached" };
     }
 
+    // Walk back from the target along discovery parents. The first form on the way
+    // that was also reached another way is where two derivations merge.
     let mergeFormKey = null;
-    const backQueue = [targetKey];
-    const backVisited = new Set();
-    backVisited.add(targetKey);
-    
-    while (backQueue.length > 0) {
-        const k = backQueue.shift();
-        const pList = parents.get(k) || [];
-        
-        if (pList.length > 1) {
+    for (let k = targetKey; k !== null; k = discovery.get(k) ? discovery.get(k).parentForm.join(' ') : null) {
+        if (extras.has(k)) {
             mergeFormKey = k;
             break;
         }
-        
-        for (const p of pList) {
-            const pKey = p.parentForm.join(' ');
-            if (!backVisited.has(pKey)) {
-                backVisited.add(pKey);
-                backQueue.push(pKey);
-            }
-        }
     }
-    
-    if (!mergeFormKey) {
+
+    if (mergeFormKey === null) {
         return { ambiguous: false, reason: "no second tree found within limit" };
     }
-    
-    const deriv1Steps = buildDerivation(mergeFormKey, parents, 0);
-    const deriv2Steps = buildDerivation(mergeFormKey, parents, 1);
-    const suffixSteps = buildSuffix(mergeFormKey, targetKey, parents);
-    
-    const d1 = { order: "leftmost", steps: [...deriv1Steps, ...suffixSteps], result: targetTokens };
-    const d2 = { order: "leftmost", steps: [...deriv2Steps, ...suffixSteps], result: targetTokens };
+
+    // Derivation 1: the discovery chain to the target.
+    // Derivation 2: the discovery chain to the other parent, the other step into the
+    // merge form, then derivation 1's steps from the merge form on. If the other parent
+    // descends from the merge form (S => SS => S), derivation 2 passes that form twice:
+    // still a valid, different derivation.
+    const deriv1Steps = discoveryChain(targetKey, discovery);
+    const other = extras.get(mergeFormKey)[0];
+    const suffixStart = deriv1Steps.findIndex(step => step.form.join(' ') === mergeFormKey);
+    const suffixSteps = suffixStart === -1 ? [] : deriv1Steps.slice(suffixStart);
+    const deriv2Steps = [...discoveryChain(other.parentForm.join(' '), discovery), other.step, ...suffixSteps];
+
+    const d1 = { order: "leftmost", steps: deriv1Steps, result: targetTokens };
+    const d2 = { order: "leftmost", steps: deriv2Steps, result: targetTokens };
     
     const tree1 = buildTree(d1, grammar);
     const tree2 = buildTree(d2, grammar);
@@ -133,57 +124,12 @@ export function findTwoTrees(grammar, targetStr, limits = { maxNodes: 200000, ma
     };
 }
 
-function buildDerivation(startFormKey, parents, branchIndexAtStart) {
-    let steps = [];
-    let curr = startFormKey;
-    let first = true;
-    
-    while (curr !== null) {
-        const pList = parents.get(curr);
-        if (!pList || pList.length === 0) break;
-        
-        const record = first && pList.length > 1 ? pList[branchIndexAtStart] : pList[0];
-        first = false;
-        
+/** Steps from the start form to `formKey`, following discovery parents. */
+function discoveryChain(formKey, discovery) {
+    const steps = [];
+    for (let record = discovery.get(formKey); record; record = discovery.get(record.parentForm.join(' '))) {
         steps.unshift(record.step);
-        curr = record.parentForm.join(' ');
     }
-    return steps;
-}
-
-function buildSuffix(fromFormKey, targetKey, parents) {
-    const childrenMap = new Map();
-    const backQueue = [targetKey];
-    const backVisited = new Set();
-    backVisited.add(targetKey);
-    
-    while (backQueue.length > 0) {
-        const k = backQueue.shift();
-        if (k === fromFormKey) break;
-        
-        const pList = parents.get(k) || [];
-        for (const p of pList) {
-            const pKey = p.parentForm.join(' ');
-            if (!childrenMap.has(pKey)) childrenMap.set(pKey, []);
-            childrenMap.get(pKey).push({ childKey: k, step: p.step });
-            
-            if (!backVisited.has(pKey)) {
-                backVisited.add(pKey);
-                backQueue.push(pKey);
-            }
-        }
-    }
-    
-    let steps = [];
-    let curr = fromFormKey;
-    while (curr !== targetKey) {
-        const cList = childrenMap.get(curr);
-        if (!cList || cList.length === 0) break;
-        const record = cList[0]; 
-        steps.push(record.step);
-        curr = record.childKey;
-    }
-    
     return steps;
 }
 
