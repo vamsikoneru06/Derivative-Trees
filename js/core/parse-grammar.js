@@ -93,6 +93,13 @@ export function parseGrammar(text) {
         }
     }
 
+    // A single uppercase letter with no productions is almost always a typo
+    for (const t of terminals) {
+        if (/^[A-Z]$/.test(t)) {
+            warnings.push(`'${t}' has no productions, so it is treated as a terminal.`);
+        }
+    }
+
     // Check for unreachable symbols (warning)
     const reachable = new Set([startSymbol]);
     const queue = [startSymbol];

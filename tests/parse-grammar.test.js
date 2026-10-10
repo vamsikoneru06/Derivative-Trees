@@ -29,3 +29,11 @@ test('Parse grammar with tokens separated by spaces', () => {
     assert.deepStrictEqual(prods[0], ['E', '+', 'E']);
     assert.deepStrictEqual(prods[1], ['id']);
 });
+
+test('Warn about an uppercase symbol with no productions', () => {
+    const result = parseGrammar(`S -> aA`);
+
+    assert.strictEqual(result.errors.length, 0);
+    assert.ok(result.grammar.terminals.has('A'));
+    assert.ok(result.warnings.some(w => w.includes("'A'")));
+});
