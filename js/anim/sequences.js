@@ -52,8 +52,8 @@ export function buildSequence(derivation, root, view, opts = {}) {
     const gapY = opts.layout?.gapY ?? 76;
     const yieldY = box.maxY + gapY;
 
-    // Room on the right for production cards and below for the yield row.
-    view.fit({ minX: Math.min(box.minX, -160), maxX: Math.max(box.maxX + 120, 160), minY: 0, maxY: yieldY });
+    // Room above the root for its production card and below for the yield row.
+    view.fit({ minX: Math.min(box.minX, -150), maxX: Math.max(box.maxX, 150), minY: -40, maxY: yieldY });
 
     // ---- A1: root appears ----
     const rootH = view.ensureNode(root);
@@ -86,7 +86,7 @@ export function buildSequence(derivation, root, view, opts = {}) {
         // A3: production card, read off the tree so derivation is optional.
         const card = view.card(k, productionLabel(parent), parent);
         add(card, 'opacity', 0, 1, t0 + 150, 300);
-        add(card, 'dx', 16, 0, t0 + 150, 300, easeOutCubic);
+        add(card, 'rise', 10, 0, t0 + 150, 300, easeOutCubic);
         add(card, 'opacity', 1, 0, t0 + 800, 150);
 
         // A6: nodes that already exist glide to their new places.

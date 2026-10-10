@@ -100,23 +100,26 @@ class EdgeHandle extends Handle {
     }
 }
 
-/** Production card "S → aSb" pinned beside a node. Props: opacity, dx (slide offset). */
+/** Production card "S → aSb" centred above a node. Props: opacity, rise (slide-up offset). */
 class CardHandle extends Handle {
     constructor(text, anchor, layer) {
-        super({ opacity: 0, dx: 0 });
+        super({ opacity: 0, rise: 0 });
         this.anchor = anchor;
         this.el = make('g', { class: 'prod-card', opacity: 0 }, layer);
-        this.box = make('rect', { class: 'prod-card__box', rx: 8, height: 30, y: -15 }, this.el);
-        const label = make('text', { class: 'prod-card__text', x: 12, dy: '0.35em' }, this.el);
+        this.box = make('rect', { class: 'prod-card__box', rx: 8, height: 28, y: -14 }, this.el);
+        const label = make('text', { class: 'prod-card__text', 'text-anchor': 'middle', dy: '0.35em' }, this.el);
         label.textContent = text;
         const measured = label.getComputedTextLength ? label.getComputedTextLength() : 0;
-        this.box.setAttribute('width', (measured || text.length * 9) + 24);
+        const width = (measured || text.length * 9) + 22;
+        this.box.setAttribute('width', width);
+        this.box.setAttribute('x', -width / 2);
     }
 
     flush() {
+        // Siblings share the node's row, so above the node is the free spot.
         const a = this.anchor.v;
-        const x = a.x + NODE_R + 14 + this.v.dx;
-        write(this.el, 'transform', `translate(${fmt(x)} ${fmt(a.y)})`);
+        const y = a.y - NODE_R - 22 + this.v.rise;
+        write(this.el, 'transform', `translate(${fmt(a.x)} ${fmt(y)})`);
         write(this.el, 'opacity', fmt(this.v.opacity));
     }
 }
