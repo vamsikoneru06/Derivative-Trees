@@ -1,0 +1,88 @@
+/* Derivation tree drawing (js/render/svg.js). Colours come from css/tokens.css;
+   the fallbacks keep the tree readable if tokens are missing. Shapes, not just
+   colours, tell node kinds apart: circle = nonterminal, rounded square = terminal,
+   dashed circle = ε. */
+
+.tree-view {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    font-family: var(--font-mono, ui-monospace, "Cascadia Code", Consolas, monospace);
+}
+
+/* ---- edges ---- */
+.edge__line {
+    stroke: var(--edge, #8a8f98);
+    stroke-width: 2;
+    stroke-linecap: butt;
+    fill: none;
+}
+.edge__glow {
+    stroke: var(--diff-highlight, #e8a33d);
+    stroke-width: 9;
+    stroke-linecap: round;
+    stroke-opacity: 0.45;
+}
+
+/* ---- nodes ---- */
+.node__base {
+    fill: var(--surface, #fff);
+    stroke-width: 2.25;
+}
+.node__label {
+    font-size: 17px;
+    font-weight: 600;
+    fill: var(--fg, #1d2024);
+    pointer-events: none;
+}
+
+.node--nt .node__base { stroke: var(--node-nt, #3d5a99); }
+.node--nt .node__fill { fill: var(--node-nt-fill, #dbe4f6); stroke: var(--node-nt, #3d5a99); stroke-width: 2.25; }
+
+.node--term .node__base { stroke: var(--node-term, #2f7d5b); stroke-dasharray: 4 3; }
+.node--term .node__fill { fill: var(--node-term-fill, #d5efe2); stroke: var(--node-term, #2f7d5b); stroke-width: 2.25; }
+
+.node--eps .node__base { stroke: var(--node-eps, #8a8f98); stroke-dasharray: 3 4; }
+.node--eps .node__fill { fill: none; stroke: none; }
+.node--eps .node__label { fill: var(--muted, #6b7079); font-style: italic; font-weight: 400; }
+
+/* Expanding pulse: a thick outer ring, so it reads without colour too. */
+.node__ring {
+    fill: none;
+    stroke: var(--node-active, #d9622b);
+    stroke-width: 3.5;
+}
+
+/* Ambiguity: the differing subtree gets a soft halo. */
+.node__glow {
+    fill: var(--diff-highlight, #e8a33d);
+    fill-opacity: 0.35;
+    stroke: var(--diff-highlight, #e8a33d);
+    stroke-width: 2;
+    stroke-dasharray: 2 3;
+}
+
+/* ---- production card ---- */
+.prod-card__box {
+    fill: var(--surface, #fff);
+    stroke: var(--node-active, #d9622b);
+    stroke-width: 1.5;
+}
+.prod-card__text {
+    font-size: 15px;
+    font-weight: 600;
+    fill: var(--fg, #1d2024);
+}
+
+/* ---- yield row ---- */
+.yield-token text {
+    font-size: 22px;
+    font-weight: 700;
+    fill: var(--fg, #1d2024);
+}
+.yield-bar {
+    stroke: var(--accent, #3d5a99);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+}
