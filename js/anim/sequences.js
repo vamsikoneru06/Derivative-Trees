@@ -130,6 +130,8 @@ export function buildSequence(derivation, root, view, opts = {}) {
         add(card, 'opacity', 1, 0, at(0.86), span(0.86, 0.98));
 
         moveCamera(box(next, [cardBox(parent, next)]), at(0.3), span(0.3, 0.8));
+        // After the last card fades, centre on the finished tree alone.
+        if (k === stepCount) moveCamera(box(next), at(0.86), span(0.86, 1));
 
         // A6: nodes that already exist glide to their new places.
         for (const [id, a] of prev) {
