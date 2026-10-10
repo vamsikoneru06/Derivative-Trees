@@ -2,7 +2,7 @@ import { Timeline } from './timeline.js';
 import { tween } from './tween.js';
 import { linear, easeOutCubic, easeInOutCubic, easeOutBack } from './easing.js';
 import { layoutTree, bounds, preorder, leaves } from '../render/layout.js';
-import { NODE_R } from '../render/svg.js';
+import { NODE_R, CARD_DX, CARD_DY, CARD_H } from '../render/svg.js';
 import { Builder } from '../render/builder.js';
 
 export const ROOT_MS = 500;
@@ -25,7 +25,7 @@ export function prefersReducedMotion() {
  *
  *  0.00–0.30  the builder walks to the node                    (builder.js)
  *  0.00–0.86  A2  node is "being expanded" (ring + accent fill); pulse 0.28–0.50
- *  0.34–0.50  A3  production card slides in on the right; out 0.86–0.98
+ *  0.34–0.50  A3  production card slides in above-right of the node; out 0.86–0.98
  *  0.30–0.80      camera reframes to fit the new tree
  *  0.50–0.86  A6  existing nodes glide to their new places
  *  0.50–0.80  A4  children grow out of the parent
@@ -79,7 +79,7 @@ export function buildSequence(derivation, root, view, opts = {}) {
     };
     const cardBox = (node, positions) => {
         const p = positions.get(node.id);
-        return { x: p.x + R + 30, y: p.y, w0: 0, w1: 190, h0: 22, h1: 22 };
+        return { x: p.x + CARD_DX, y: p.y + CARD_DY, w0: 0, w1: 190, h0: 0, h1: CARD_H + 4 };
     };
     let cam = box(layouts[0]);
     const moveCamera = (to, start, duration) => {
@@ -214,7 +214,8 @@ export function buildSequence(derivation, root, view, opts = {}) {
             add(h, 'ghost', 0, 0.6, t, each, easeInOutCubic);
             if (leaf.parent) add(view.ensureEdge(leaf.parent, leaf), 'fade', 0, 1, t, each);
         });
-        const rowBox = targets.map(p => ({ ...p, h1: R * 1.6 }));
+        // Leave room under the row for the page's "Yield" label.
+        const rowBox = targets.map(p => ({ ...p, h1: R * 4.2 }));
         moveCamera(box(final, rowBox), start, YIELD_MS * 0.6);
         yieldInfo = { start, end: start + YIELD_MS, rightEnd: targets[n - 1] };
         end = start + YIELD_MS;

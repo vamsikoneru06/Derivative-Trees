@@ -170,18 +170,23 @@ class EdgeHandle extends Handle {
 }
 
 /**
- * Production card "S → a S b" to the right of a node, tied to it by a dashed link.
+ * Production card "S → a S b" above and to the right of a node, in the gap
+ * between tree rows so it never covers a sibling; a dashed link ties it to the node.
  * Props: opacity, slide (extra offset while it slides in), dashed (practice "S → ?").
  */
+export const CARD_DX = NODE_R * 0.55;   // card's left edge, from the node centre
+export const CARD_DY = -NODE_R - 44;    // card's top edge, from the node centre
+export const CARD_H = 42;
+
 class CardHandle extends Handle {
     constructor(text, anchor, layer) {
         super({ opacity: 0, slide: 0, dashed: 0 });
         this.anchor = anchor;
         this.el = make('g', { class: 'prod-card', opacity: 0 }, layer);
-        this.link = make('line', { class: 'prod-card__link', y1: 21, y2: 21, x2: 0 }, this.el);
-        this.shadow = make('rect', { class: 'prod-card__shadow', y: 4, height: 42, rx: 11 }, this.el);
-        this.box = make('rect', { class: 'prod-card__box', height: 42, rx: 11 }, this.el);
-        const label = make('text', { class: 'prod-card__text', x: 15, y: 22, 'dominant-baseline': 'central' }, this.el);
+        this.link = make('line', { class: 'prod-card__link', x1: 10, y1: CARD_H }, this.el);
+        this.shadow = make('rect', { class: 'prod-card__shadow', y: 4, height: CARD_H, rx: 11 }, this.el);
+        this.box = make('rect', { class: 'prod-card__box', height: CARD_H, rx: 11 }, this.el);
+        const label = make('text', { class: 'prod-card__text', x: 15, y: CARD_H / 2, 'dominant-baseline': 'central' }, this.el);
         const [lhs, rhs] = text.split(' → ');
         make('tspan', { class: 'prod-card__lhs' }, label).textContent = lhs;
         make('tspan', { class: 'prod-card__arrow' }, label).textContent = ' → ';
@@ -195,9 +200,11 @@ class CardHandle extends Handle {
     flush() {
         const a = this.anchor.v;
         const s = this.v.slide;
-        write(this.el, 'transform', `translate(${fmt(a.x + NODE_R + 30 + s)} ${fmt(a.y - 21)})`);
+        write(this.el, 'transform', `translate(${fmt(a.x + CARD_DX + s)} ${fmt(a.y + CARD_DY)})`);
         write(this.el, 'opacity', fmt(this.v.opacity));
-        write(this.link, 'x1', fmt(-22 - s));
+        // Link ends at the node's upper-right edge (45 degrees), in card coordinates.
+        write(this.link, 'x2', fmt(-CARD_DX - s + NODE_R * 0.7));
+        write(this.link, 'y2', fmt(-CARD_DY - NODE_R * 0.7));
         write(this.box, 'class', `prod-card__box${this.v.dashed > 0.5 ? ' is-pending' : ''}`);
     }
 }
