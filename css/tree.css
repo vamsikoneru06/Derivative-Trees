@@ -1,88 +1,86 @@
-/* Derivation tree drawing (js/render/svg.js). Colours come from css/tokens.css;
-   the fallbacks keep the tree readable if tokens are missing. Shapes, not just
-   colours, tell node kinds apart: circle = nonterminal, rounded square = terminal,
-   dashed circle = ε. */
+/* Derivation tree drawing (js/render/svg.js, js/render/builder.js).
+   Colours come from css/tokens.css. Node kinds differ by shape and fill:
+   nonterminal = filled disc, terminal = outlined disc, ε = dashed outline. */
 
 .tree-view {
     display: block;
     width: 100%;
     height: 100%;
-    overflow: visible;
-    font-family: var(--font-mono, ui-monospace, "Cascadia Code", Consolas, monospace);
+    overflow: hidden;
+    font-family: var(--font-mono);
 }
 
 /* ---- edges ---- */
 .edge__line {
-    stroke: var(--edge, #8a8f98);
+    stroke: var(--tree-edge);
     stroke-width: 2;
-    stroke-linecap: butt;
+    stroke-linecap: round;
     fill: none;
 }
+.edge__line.is-drawing {
+    stroke: var(--tree-active);
+    stroke-width: 3;
+}
+.edge__tip { fill: var(--tree-active); }
 .edge__glow {
-    stroke: var(--diff-highlight, #e8a33d);
-    stroke-width: 9;
+    stroke: var(--diff-highlight);
+    stroke-width: 10;
     stroke-linecap: round;
     stroke-opacity: 0.45;
 }
 
 /* ---- nodes ---- */
-.node__base {
-    fill: var(--surface, #fff);
-    stroke-width: 2.25;
-}
-.node__label {
-    font-size: 17px;
-    font-weight: 600;
-    fill: var(--fg, #1d2024);
-    pointer-events: none;
-}
+.node__shadow { fill: var(--tree-shadow); }
+.node__label { font-weight: 600; pointer-events: none; }
 
-.node--nt .node__base { stroke: var(--node-nt, #3d5a99); }
-.node--nt .node__fill { fill: var(--node-nt-fill, #dbe4f6); stroke: var(--node-nt, #3d5a99); stroke-width: 2.25; }
+.node--nt .node__base { fill: var(--tree-nt); }
+.node--nt .node__over { fill: var(--tree-active); }
+.node--nt .node__label { fill: var(--tree-nt-ink); font-weight: 700; }
+.node--nt.is-active .node__label { fill: var(--tree-active-on); }
+.node__open { fill: none; stroke: var(--tree-nt); stroke-width: 1.75; stroke-dasharray: 3 4; }
+.node__ring, .node__pulse { fill: none; stroke: var(--tree-active); stroke-width: 3; }
 
-.node--term .node__base { stroke: var(--node-term, #2f7d5b); stroke-dasharray: 4 3; }
-.node--term .node__fill { fill: var(--node-term-fill, #d5efe2); stroke: var(--node-term, #2f7d5b); stroke-width: 2.25; }
+.node--term .node__base { fill: var(--tree-surface); stroke: var(--tree-t); stroke-width: 2.25; }
+.node--term .node__over { fill: var(--tree-active-soft); stroke: var(--tree-active); stroke-width: 2.5; }
+.node--term .node__label { fill: var(--tree-t-ink); }
+.node__bar { stroke: var(--tree-t); stroke-width: 3; stroke-linecap: round; }
 
-.node--eps .node__base { stroke: var(--node-eps, #8a8f98); stroke-dasharray: 3 4; }
-.node--eps .node__fill { fill: none; stroke: none; }
-.node--eps .node__label { fill: var(--muted, #6b7079); font-style: italic; font-weight: 400; }
+.node--eps .node__base { fill: var(--tree-surface); stroke: var(--tree-muted); stroke-width: 2; stroke-dasharray: 4 3.5; }
+.node--eps .node__label { fill: var(--tree-muted); }
 
-/* Expanding pulse: a thick outer ring, so it reads without colour too. */
-.node__ring {
-    fill: none;
-    stroke: var(--node-active, #d9622b);
-    stroke-width: 3.5;
-}
+.node-burst { fill: none; stroke: var(--tree-active); stroke-width: 2.5; }
+.node-ghost { fill: none; stroke: var(--tree-muted); stroke-width: 1.5; stroke-dasharray: 3 4; }
 
-/* Ambiguity: the differing subtree gets a soft halo. */
+/* Ambiguity: a soft halo marks nodes the other tree does not have. */
 .node__glow {
-    fill: var(--diff-highlight, #e8a33d);
-    fill-opacity: 0.35;
-    stroke: var(--diff-highlight, #e8a33d);
+    fill: var(--diff-highlight);
+    fill-opacity: 0.3;
+    stroke: var(--diff-highlight);
     stroke-width: 2;
     stroke-dasharray: 2 3;
 }
 
 /* ---- production card ---- */
-.prod-card__box {
-    fill: var(--surface, #fff);
-    stroke: var(--node-active, #d9622b);
-    stroke-width: 1.5;
-}
-.prod-card__text {
-    font-size: 15px;
-    font-weight: 600;
-    fill: var(--fg, #1d2024);
-}
+.prod-card__link { stroke: var(--tree-active); stroke-width: 2; stroke-dasharray: 2 5; stroke-linecap: round; }
+.prod-card__shadow { fill: var(--tree-shadow); }
+.prod-card__box { fill: var(--tree-surface); stroke: var(--tree-active); stroke-width: 2; }
+.prod-card__box.is-pending { stroke-dasharray: 5 5; }
+.prod-card__text { font-size: 17px; font-weight: 600; font-family: var(--font-mono); }
+.prod-card__lhs { fill: var(--tree-active-ink); }
+.prod-card__arrow { fill: var(--tree-muted); }
+.prod-card__rhs { fill: var(--tree-ink); }
 
-/* ---- yield row ---- */
-.yield-token text {
-    font-size: 22px;
-    font-weight: 700;
-    fill: var(--fg, #1d2024);
-}
-.yield-bar {
-    stroke: var(--accent, #3d5a99);
-    stroke-width: 2.5;
-    stroke-linecap: round;
-}
+/* ---- the builder ---- */
+.builder__shadow { fill: var(--tree-shadow); }
+.builder__ink { stroke: var(--char-ink); stroke-linecap: round; }
+.builder__skin { fill: var(--char-skin); }
+.builder__ear { fill: var(--char-skin); stroke: rgb(0 0 0 / 0.15); }
+.builder__body { fill: var(--char-body); }
+.builder__tie { fill: var(--char-tie); }
+.builder__hair { fill: none; stroke: var(--char-hair); stroke-linecap: round; }
+.builder__eye { fill: #fff; stroke: var(--char-ink); }
+.builder__pupil { fill: #1d1d1f; }
+.builder__nose { fill: #e89a7a; }
+.builder__mouth { fill: none; stroke: var(--char-ink); stroke-linecap: round; }
+.builder__bubble { fill: var(--tree-surface); stroke: var(--tree-ink); stroke-width: 1.5; }
+.builder__say { fill: var(--tree-ink); font-family: var(--font-sans); font-weight: 800; }
