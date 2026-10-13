@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/mobile.css">
     <script type="module" src="js/pages/home.js"></script>
+    <script type="module" src="js/pages/home-mobile.js"></script>
 </head>
 <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -39,7 +40,7 @@
         </div>
     </header>
 
-    <main id="main" class="page">
+    <main id="main" class="d-only page">
         <section class="hero">
             <div>
                 <h1>Watch grammars grow into trees.</h1>
@@ -90,9 +91,65 @@
             </article>
         </section>
     </main>
+    <main id="main-m" class="m-only home-m">
+        <section class="home-m-hero">
+            <div class="home-m-hero__text">
+                <span class="home-m-kicker">Formal Languages and Automata</span>
+                <h1>Watch grammars grow into trees.</h1>
+                <p>Type a context-free grammar and a string. Every production becomes a branch, one step at a time.</p>
+                <div class="home-m-actions">
+                    <a class="home-m-btn home-m-btn--primary" href="visualizer.html">Open Visualizer</a>
+                    <a class="home-m-btn" href="learn.html">Learn the theory<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4"/></svg></a>
+                </div>
+            </div>
+            <div class="home-m-hero__tree"><svg id="hm-hero" aria-label="The tree for S → a S b | ε deriving aabb"></svg></div>
+            <span class="home-m-hero__cap">S → a S b | ε   deriving   aabb</span>
+        </section>
 
-    <footer class="site-footer">
+        <section class="home-m-scene" id="hm-scene">
+            <div class="home-m-pin">
+                <div class="home-m-pin__tree"><svg id="hm-scene-tree" aria-label="The tree for id + id * id"></svg></div>
+                <div id="hm-form" class="home-m-pin__form"></div>
+            </div>
+            <div class="home-m-caps">
+                <div class="home-m-cap"><span>01</span><h2>Start with one symbol.</h2><p>Every derivation begins at the start symbol. Here that is E, the root of the tree.</p></div>
+                <div class="home-m-cap"><span>02</span><h2>Replace one nonterminal.</h2><p>Each step picks a production such as E → E + E. The chosen E gains one child per symbol on the right side.</p></div>
+                <div class="home-m-cap"><span>03</span><h2>Keep going, leftmost first.</h2><p>The tree widens as it grows. Older branches slide aside to make room for new ones.</p></div>
+                <div class="home-m-cap"><span>04</span><h2>Read the leaves.</h2><p>When no nonterminals are left, the leaves from left to right spell the string: id + id * id.</p></div>
+            </div>
+        </section>
+
+        <section class="home-m-cards" id="hm-cards">
+            <h2>Three ways to look at a grammar.</h2>
+            <a class="home-m-card" href="visualizer.html">
+                <h3>Step-by-step derivation</h3>
+                <p>Play, pause and step through every production. The list of sentential forms stays in sync with the tree.</p>
+                <div class="home-m-card__code"><span>E</span><span>⇒ E + E</span><span>⇒ id + E</span></div>
+                <span class="home-m-card__cta">Open Visualizer<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4"/></svg></span>
+            </a>
+            <a class="home-m-card" href="visualizer.html">
+                <h3>Leftmost vs rightmost</h3>
+                <p>Switch the order and watch the same tree grow from the other side.</p>
+                <div class="home-m-card__code"><span>Leftmost   ⇒ id + E</span><span>Rightmost  ⇒ E + id</span></div>
+                <span class="home-m-card__cta">Compare orders<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4"/></svg></span>
+            </a>
+            <a class="home-m-card" href="ambiguity.html">
+                <h3>Spot ambiguity</h3>
+                <p>Some strings have two different trees. See them side by side with the differences marked.</p>
+                <div class="home-m-card__code"><span>id + id * id</span><span>Tree 1: + at the root</span><span>Tree 2: * at the root</span></div>
+                <span class="home-m-card__cta">Explore ambiguity<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4"/></svg></span>
+            </a>
+        </section>
+
+        <footer class="home-m-footer">
+            <span>Derivation Tree Explorer. A course project for Formal Languages and Automata.</span>
+            <div><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a><a href="https://github.com/vamsikoneru06/Derivative-Trees">GitHub</a></div>
+        </footer>
+    </main>
+
+    <footer class="site-footer d-only">
         Formal Languages &amp; Automata course project · Built by the <a href="team.html">team</a> with hand-written HTML, CSS, JavaScript and SVG.
+        <span class="footer-legal"><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></span>
     </footer>
 </body>
 </html>
