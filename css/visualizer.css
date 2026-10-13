@@ -506,3 +506,5 @@
     .dock__meter { min-width: 100%; order: 3; }
     .seg--speed, .seg--order { flex: 1 1 180px; width: auto; order: 4; }
 }
+.vz-practice__note[data-tone="wrong"] { color: var(--err); }
+.vz-practice__note[data-tone="right"] { color: var(--ok); }

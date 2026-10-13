@@ -7,6 +7,7 @@
     <meta name="description" content="Type a context-free grammar and a string, and watch its derivation tree grow step by step.">
     <script>try{var t=localStorage.getItem('dte-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
     <script type="module" src="js/ui/theme.js"></script>
+    <script type="module" src="js/ui/mobile-shell.js"></script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
@@ -14,9 +15,10 @@
     <link rel="stylesheet" href="css/tree.css">
     <link rel="stylesheet" href="css/visualizer.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/mobile.css">
     <script type="module" src="js/pages/visualizer.js"></script>
 </head>
-<body>
+<body data-title="Visualizer" data-mobile-title="always">
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
         <a class="brand" href="index.html">
@@ -51,9 +53,24 @@
             </div>
         </header>
 
+        <section class="vzm-top m-only" aria-label="Grammar and string">
+            <div class="vzm-card">
+                <button type="button" id="vzm-grammar" class="vzm-grammar">
+                    <span class="vzm-grammar__text"><span class="vzm-label">Grammar</span><span id="vzm-preset" class="vzm-grammar__name"></span></span>
+                    <span id="vzm-rules" class="vzm-grammar__status"></span>
+                    <svg class="m-chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1.5 1.5 6.5 7l-5 5.5"/></svg>
+                </button>
+                <div class="vzm-string"><label class="vzm-label" for="target">String</label><span data-slot="derive"></span></div>
+            </div>
+            <div class="vzm-status"><span data-slot="badge"></span><span data-slot="mode"></span></div>
+        </section>
+
         <section class="vz-input card-x" aria-label="Grammar and string">
             <div class="vz-input__grammar">
-                <div class="vz-input__row">
+                <div class="vzm-sheet-head m-only"><h2>Grammar</h2><button type="button" id="vzm-apply" class="vzm-head-btn vzm-head-btn--primary">Apply</button></div>
+                <div class="vzm-group m-only"><span class="vzm-label">Examples</span><div id="vzm-examples" class="m-list vzm-examples"></div></div>
+                <span class="vzm-label m-only">Productions, one per line</span>
+                <div class="vz-input__row d-only">
                     <h2>Grammar</h2>
                     <div class="select-wrap">
                         <select id="preset" aria-label="Example grammar"></select>
@@ -61,6 +78,9 @@
                     </div>
                 </div>
                 <div id="editor" class="vz-editor"></div>
+                <div class="vzm-keys m-only" aria-label="Insert symbol">
+                    <button type="button" data-ins=" → ">→</button><button type="button" data-ins=" | ">|</button><button type="button" data-ins="ε">ε</button><button type="button" data-ins="&#10;" aria-label="New line">↵</button>
+                </div>
             </div>
             <div class="vz-input__string">
                 <h2><label for="target">String</label></h2>
@@ -94,6 +114,8 @@
                     </div>
 
                     <div class="dock" role="group" aria-label="Playback">
+                        <button type="button" class="dock__speed m-only" data-act="speed" aria-label="Change speed">1×</button>
+                        <button type="button" class="dock__steps m-only" data-act="steps" aria-label="Derivation steps"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 5h10M7 10h10M7 15h10"/><circle cx="3.2" cy="5" r="1.1" fill="currentColor" stroke="none"/><circle cx="3.2" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="3.2" cy="15" r="1.1" fill="currentColor" stroke="none"/></svg></button>
                         <div class="dock__buttons">
                             <button type="button" class="dock__btn" data-act="restart" aria-label="Restart" title="Restart (R)">
                                 <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9a5 5 0 1 0 1.6-3.7"/><path d="M4 2.5v3.3h3.3"/></svg>
@@ -141,13 +163,22 @@
                 <section id="practice" class="card-x vz-practice" hidden aria-label="Practice">
                     <div class="vz-practice__head">
                         <h2 id="prac-title">Expand S</h2>
-                        <span id="prac-score" class="vz-practice__score"></span>
+                        <span class="vzm-prac-right"><span id="prac-score" class="vz-practice__score"></span><button type="button" class="vzm-steps-btn m-only" data-act="steps" aria-label="Derivation steps"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 5h10M7 10h10M7 15h10"/><circle cx="3.2" cy="5" r="1.1" fill="currentColor" stroke="none"/><circle cx="3.2" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="3.2" cy="15" r="1.1" fill="currentColor" stroke="none"/></svg></button></span>
                     </div>
                     <div id="choices" class="vz-choices"></div>
                     <p id="prac-note" class="vz-practice__note" aria-live="polite"></p>
                 </section>
                 <section class="card-x steps-card" aria-label="Derivation steps">
-                    <div class="steps-card__head">
+                    <div class="vzm-sheet-head m-only"><h2>Steps</h2><button type="button" id="vzm-steps-done" class="vzm-head-btn">Done</button></div>
+                    <div class="vzm-steps-top m-only">
+                        <div class="seg seg--order vzm-order" role="group" aria-label="Derivation order" data-value="leftmost">
+                            <span class="seg__thumb" aria-hidden="true"></span>
+                            <button type="button" data-order="leftmost" aria-pressed="true">Leftmost</button>
+                            <button type="button" data-order="rightmost" aria-pressed="false">Rightmost</button>
+                        </div>
+                        <span class="vzm-note">The underlined symbol is replaced next. Tap a row to jump.</span>
+                    </div>
+                    <div class="steps-card__head d-only">
                         <h2>Derivation steps</h2>
                         <span id="steps-note" class="steps-card__note"></span>
                     </div>

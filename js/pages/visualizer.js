@@ -8,8 +8,9 @@ import { preorder } from '../render/layout.js';
 import { buildSequence, BEAT_MS, YIELD_MS } from '../anim/sequences.js';
 import { mountEditor } from '../ui/grammar-editor.js';
 import { mountSteps, completedSteps } from '../ui/steps-panel.js';
-import { findPreset, fillPresetSelect } from '../ui/presets.js';
+import { PRESETS, findPreset, fillPresetSelect } from '../ui/presets.js';
 import { nextFrame } from './shared.js';
+import { createSheet } from '../ui/mobile-shell.js';
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const $ = id => document.getElementById(id);
@@ -39,7 +40,7 @@ const els = {
     total: dock.querySelector('.dock__total'),
     ticks: dock.querySelector('.dock__ticks'),
     modeSeg: document.querySelector('.seg--mode'),
-    orderSeg: document.querySelector('.seg--order'),
+    orderSegs: [...document.querySelectorAll('.seg--order')],
     speedSeg: document.querySelector('.seg--speed'),
 };
 
@@ -75,7 +76,7 @@ els.speedSeg.innerHTML = '<span class="seg__thumb" aria-hidden="true"></span>'
     + SPEEDS.map(v => `<button type="button" data-speed="${v}" aria-pressed="false">${v}×</button>`).join('');
 setSeg(els.speedSeg, 'speed', 1);
 setSeg(els.modeSeg, 'mode', 'auto');
-setSeg(els.orderSeg, 'order', 'leftmost');
+els.orderSegs.forEach(seg => setSeg(seg, 'order', 'leftmost'));
 
 els.speedSeg.addEventListener('click', e => {
     const b = e.target.closest('button[data-speed]');
@@ -84,22 +85,23 @@ els.speedSeg.addEventListener('click', e => {
     setSeg(els.speedSeg, 'speed', b.dataset.speed);
     if (state.tl) state.tl.setSpeed(state.speed);
 });
-els.orderSeg.addEventListener('click', e => {
+els.orderSegs.forEach(seg => seg.addEventListener('click', e => {
     const b = e.target.closest('button[data-order]');
     if (!b || b.dataset.order === state.order) return;
     state.order = b.dataset.order;
-    setSeg(els.orderSeg, 'order', state.order);
+    els.orderSegs.forEach(other => setSeg(other, 'order', state.order));
     if (!state.found) return render();
     setBadgeFound();
     if (state.mode === 'practice') startPractice();
     else showAuto(false);
-});
+}));
 els.modeSeg.addEventListener('click', e => {
     const b = e.target.closest('button[data-mode]');
     if (!b || b.dataset.mode === state.mode) return;
     state.mode = b.dataset.mode;
     setSeg(els.modeSeg, 'mode', state.mode);
     els.practice.hidden = state.mode !== 'practice';
+    document.body.classList.toggle('vz-practicing', state.mode === 'practice');
     if (!state.found) return render();
     if (state.mode === 'practice') startPractice();
     else showAuto(false);
@@ -111,6 +113,7 @@ const editor = mountEditor($('editor'), result => {
     const preset = findPreset(els.preset.value);
     if (preset && result.text !== preset.grammar) els.preset.value = '';
     els.derive.disabled = result.errors.length > 0;
+    renderPhoneGrammar(result);
 }, { label: null });
 
 fillPresetSelect(els.preset, p => p.visualizer);
@@ -136,7 +139,7 @@ function setBadge(kind, icon, text, note) {
 
 function setBadgeFound() {
     const n = state.found.leftmost.derivation.steps.length;
-    setBadge('ok', '✓', 'Derivable', `${n} step${n === 1 ? '' : 's'}, ${state.order}`);
+    setBadge('ok', '✓', phone.matches ? `Derivable, ${n} step${n === 1 ? '' : 's'}` : 'Derivable', `${n} step${n === 1 ? '' : 's'}, ${state.order}`);
 }
 
 async function derive(autoplay) {
@@ -271,6 +274,8 @@ dock.addEventListener('click', e => {
     else if (act === 'restart') restart();
     else if (act === 'back') state.mode === 'practice' ? undoTo(stepCount() - 1) : go(completedSteps(state.tl) - 1);
     else if (act === 'forward') go(completedSteps(state.tl) + 1);
+    else if (act === 'speed') cycleSpeed();
+    else if (act === 'steps') stepsSheet.open();
 });
 
 els.yieldBtn.addEventListener('click', () => {
@@ -330,7 +335,7 @@ function render() {
     // Caption over the stage.
     if (!tl) {
         els.kicker.textContent = 'NO TREE';
-        els.caption.textContent = 'Fix the grammar or string, then press Derive.';
+        els.caption.textContent = `Fix the grammar or string, then ${phone.matches ? 'tap' : 'press'} Derive.`;
     } else if (finished) {
         els.kicker.textContent = 'FINISHED';
         els.caption.textContent = `Done. The leaves spell ${yieldText()}.`;
@@ -342,7 +347,7 @@ function render() {
         const step = state.derivation.steps[k];
         els.kicker.textContent = `STEP ${k + 1} OF ${N}`;
         els.caption.textContent = k === 0 && !playing && tl.time <= tl.stepEnd(0) + 1
-            ? `Ready. Press play to start from ${state.derivation.steps[0].form[0]}.`
+            ? `Ready. ${phone.matches ? 'Tap' : 'Press'} play to start from ${state.derivation.steps[0].form[0]}.`
             : `Expand ${step.lhs} with ${step.lhs} → ${step.rhs.length ? step.rhs.join(' ') : 'ε'}`;
     }
 
@@ -352,7 +357,7 @@ function render() {
     els.play.disabled = practice || !N;
     els.back.disabled = !tl || (practice ? N === 0 : k === 0 && tl.time <= tl.stepEnd(0) + 1);
     els.forward.disabled = !tl || practice || k >= N;
-    els.roll.style.transform = `translateY(-${k * 20}px)`;
+    els.roll.style.transform = `translateY(calc(${-k} * var(--roll-h, 20px)))`;
     els.total.textContent = `/ ${practice ? Math.max(N, state.found ? state.found.leftmost.derivation.steps.length : 0) : N}`;
     [...els.ticks.children].forEach((tick, i) => {
         const fill = tl ? Math.min(1, Math.max(0, (tl.time - markerStart(i + 1)) / BEAT_MS)) : 0;
@@ -459,6 +464,7 @@ function renderChoices() {
         b.addEventListener('click', () => choose(index, lhs, rhs, text));
         els.choices.appendChild(b);
     }
+    els.pracNote.dataset.tone = p.verdict || '';
     els.pracNote.textContent = p.verdict === 'wrong'
         ? `That choice can't produce ${yieldText()} from here. Try another.`
         : p.verdict === 'right'
@@ -490,6 +496,131 @@ function choose(index, lhs, rhs, text) {
         if (first) first.focus({ preventScroll: true });
     }, 650);
 }
+
+// ---- phone layout (Visualizer Mobile design) ---------------------------------
+// Below 760px the same elements move into a phone shell: the grammar block and
+// the steps list become bottom sheets, and the dock sits under the stage.
+
+const phone = matchMedia('(max-width: 759px)');
+const grammarSheet = createSheet('Grammar', '', { className: 'vzm-sheet' });
+const stepsSheet = createSheet('Derivation steps', '', { className: 'vzm-sheet' });
+const slot = name => document.querySelector(`[data-slot="${name}"]`);
+const moves = [
+    [document.querySelector('.vz-input__derive'), () => slot('derive')],
+    [els.badge, () => slot('badge')],
+    [els.modeSeg, () => slot('mode')],
+    [document.querySelector('.vz-input__grammar'), () => grammarSheet.body],
+    [document.querySelector('.steps-card'), () => stepsSheet.body],
+    [dock, () => document.querySelector('.vz-stage'), 'after'],
+];
+// A marker comment remembers each element's desktop position.
+const homes = moves.map(([el]) => {
+    const mark = document.createComment('home');
+    el.before(mark);
+    return mark;
+});
+
+function applyLayout() {
+    const isPhone = phone.matches;
+    document.body.classList.toggle('vz-mobile', isPhone);
+    moves.forEach(([el, target, where], i) => {
+        if (!isPhone) homes[i].after(el);
+        else if (where === 'after') target().after(el);
+        else target().appendChild(el);
+    });
+    if (!isPhone) {
+        grammarSheet.close();
+        stepsSheet.close();
+    }
+    if (state.found) setBadgeFound();
+}
+phone.addEventListener('change', applyLayout);
+
+$('vzm-grammar').addEventListener('click', () => {
+    if (state.tl) state.tl.pause();
+    grammarSheet.open();
+});
+$('vzm-apply').addEventListener('click', () => {
+    if (els.derive.disabled) return;
+    grammarSheet.close();
+    derive(true);
+});
+$('vzm-steps-done').addEventListener('click', () => stepsSheet.close());
+
+// Examples list in the grammar sheet.
+const examples = PRESETS.filter(p => p.visualizer);
+$('vzm-examples').replaceChildren(...examples.map(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.preset = p.id;
+    b.innerHTML = '<span class="vzm-ex__name"></span><span class="vzm-ex__str"></span><svg class="vzm-ex__check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>';
+    b.querySelector('.vzm-ex__name').textContent = p.name;
+    b.querySelector('.vzm-ex__str').textContent = p.target;
+    b.addEventListener('click', () => {
+        els.preset.value = p.id;
+        editor.setText(p.grammar);
+        els.target.value = p.target;
+    });
+    return b;
+}));
+
+// Keys for the symbols phone keyboards lack.
+document.querySelector('.vzm-keys').addEventListener('click', e => {
+    const b = e.target.closest('button[data-ins]');
+    if (!b) return;
+    const ta = editor.textarea;
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? start;
+    ta.value = ta.value.slice(0, start) + b.dataset.ins + ta.value.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + b.dataset.ins.length;
+    ta.dispatchEvent(new Event('input'));
+    ta.focus({ preventScroll: true });
+});
+
+function renderPhoneGrammar(result) {
+    const preset = examples.find(p => p.grammar === result.text);
+    $('vzm-preset').textContent = preset ? preset.name : 'Custom grammar';
+    const rules = $('vzm-rules');
+    if (result.errors.length) {
+        rules.textContent = result.errors[0].line ? `Line ${result.errors[0].line}` : 'Error';
+        rules.classList.add('is-error');
+    } else {
+        let n = 0;
+        for (const alts of result.grammar.productions.values()) n += alts.length;
+        rules.textContent = `${n} rules`;
+        rules.classList.remove('is-error');
+    }
+    document.querySelectorAll('#vzm-examples button').forEach(b => {
+        b.classList.toggle('is-current', !!preset && b.dataset.preset === preset.id);
+    });
+}
+
+function cycleSpeed() {
+    state.speed = SPEEDS[(SPEEDS.indexOf(state.speed) + 1) % SPEEDS.length];
+    setSeg(els.speedSeg, 'speed', state.speed);
+    if (state.tl) state.tl.setSpeed(state.speed);
+    showSpeed();
+}
+function showSpeed() {
+    dock.querySelector('[data-act="speed"]').textContent = `${state.speed}×`;
+}
+els.speedSeg.addEventListener('click', showSpeed);
+
+// Swipe the tree left or right to step.
+let touch = null;
+const stage = document.querySelector('.vz-stage');
+stage.addEventListener('touchstart', e => {
+    touch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}, { passive: true });
+stage.addEventListener('touchend', e => {
+    if (!touch || !state.tl || state.mode !== 'auto') return;
+    const dx = e.changedTouches[0].clientX - touch.x;
+    const dy = e.changedTouches[0].clientY - touch.y;
+    touch = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(completedSteps(state.tl) + (dx < 0 ? 1 : -1));
+});
+
+applyLayout();
 
 // ---- start: the first preset, playing on its own -----------------------------
 
