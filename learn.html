@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/mobile.css">
     <script type="module" src="js/pages/learn.js"></script>
+    <script type="module" src="js/pages/learn-mobile.js"></script>
 </head>
 <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -39,7 +40,7 @@
         </div>
     </header>
 
-    <main id="main" class="page learn">
+    <main id="main" class="d-only page learn">
         <nav class="learn-toc toc" aria-label="On this page">
             <div class="toc__progress" aria-hidden="true"><span></span></div>
             <ol>
@@ -166,8 +167,34 @@
             </section>
         </div>
     </main>
+    <main id="main-m" class="m-only">
+        <div class="m-page learn-m">
+            <div class="m-intro">
+                <h1>Learn</h1>
+                <p>Four short lessons. Each one has a tree you can watch being built.</p>
+            </div>
+            <div class="learn-m-tabs" role="tablist" aria-label="Lessons"></div>
+            <article class="m-card learn-m-card" role="tabpanel">
+                <div class="learn-m-text">
+                    <span id="lm-kicker" class="m-kicker"></span>
+                    <h2 id="lm-title"></h2>
+                    <div id="lm-body"></div>
+                </div>
+                <div class="m-stage learn-m-stage">
+                    <span id="lm-cap" class="learn-m-cap"></span>
+                    <svg id="lm-tree" aria-hidden="true"></svg>
+                </div>
+                <ol id="lm-forms" class="learn-m-forms" hidden></ol>
+                <div id="lm-terms" class="learn-m-terms"></div>
+                <div class="m-btn-row learn-m-nav">
+                    <button type="button" id="lm-prev" class="m-btn">Previous</button>
+                    <button type="button" id="lm-next" class="m-btn m-btn--primary">Next lesson</button>
+                </div>
+            </article>
+        </div>
+    </main>
 
-    <footer class="site-footer">
+    <footer class="site-footer d-only">
         Notation: <code>→</code> in productions, <code>⇒</code> between sentential forms, <code>ε</code> for the empty string.
     </footer>
 </body>

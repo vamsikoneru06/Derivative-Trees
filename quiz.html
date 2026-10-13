@@ -12,9 +12,11 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/tree.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/mobile.css">
     <script type="module" src="js/pages/quiz.js"></script>
+    <script type="module" src="js/pages/quiz-mobile.js"></script>
 </head>
 <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -38,7 +40,7 @@
         </div>
     </header>
 
-    <main id="main" class="page narrow">
+    <main id="main" class="d-only page narrow">
         <h1>Quiz</h1>
         <div class="row" style="justify-content: space-between; margin-bottom: var(--space-3)">
             <span id="progress" class="hint"></span>
@@ -53,6 +55,53 @@
                 <button id="next" class="btn btn--primary" type="button" hidden>Next question</button>
             </div>
         </section>
+    </main>
+    <main id="main-m" class="m-only">
+        <div class="m-page quiz-m">
+            <section id="qm-intro" class="quiz-m-view">
+                <div class="m-intro">
+                    <h1>Quiz</h1>
+                    <p>10 questions. Some ask you to read a tree, some ask you to build one by picking productions.</p>
+                </div>
+                <div class="m-stage m-stage--framed quiz-m-hero"><svg id="qm-intro-tree" aria-hidden="true"></svg></div>
+                <div class="quiz-m-facts">
+                    <div><b>10</b><span>questions</span></div>
+                    <div><b>4</b><span>build a tree</span></div>
+                    <div><b>6</b><span>choose one</span></div>
+                </div>
+                <button type="button" class="m-btn m-btn--primary quiz-m-big" data-qm="start">Start quiz</button>
+            </section>
+
+            <section id="qm-question" class="quiz-m-view" hidden>
+                <div class="quiz-m-progress">
+                    <div class="quiz-m-progress__top"><b id="qm-num"></b><span id="qm-score"></span></div>
+                    <div id="qm-bar" class="quiz-m-bar"></div>
+                </div>
+                <div class="quiz-m-q">
+                    <span id="qm-kicker" class="m-kicker"></span>
+                    <h2 id="qm-text"></h2>
+                    <span id="qm-grammar" class="quiz-m-grammar"></span>
+                </div>
+                <div id="qm-stage" class="m-stage m-stage--framed quiz-m-stage"><svg id="qm-tree" aria-hidden="true"></svg></div>
+                <span id="qm-prompt" class="quiz-m-prompt"></span>
+                <div id="qm-options" class="quiz-m-options"></div>
+                <p id="qm-feedback" class="m-note" aria-live="polite"></p>
+                <button type="button" class="m-btn m-btn--primary quiz-m-big" data-qm="next" disabled>Next question</button>
+            </section>
+
+            <section id="qm-done" class="quiz-m-view" hidden>
+                <div class="quiz-m-result">
+                    <span class="quiz-m-result__k">Quiz finished</span>
+                    <span class="quiz-m-result__score"><span id="qm-final"></span><span>/10</span></span>
+                    <span id="qm-msg" class="quiz-m-result__msg"></span>
+                </div>
+                <div id="qm-review" class="m-card m-card--s quiz-m-review"></div>
+                <div class="m-btn-row">
+                    <a class="m-btn quiz-m-link" href="learn.html">Review lessons</a>
+                    <button type="button" class="m-btn m-btn--primary" data-qm="start">Try again</button>
+                </div>
+            </section>
+        </div>
     </main>
 </body>
 </html>

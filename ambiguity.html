@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/mobile.css">
     <script type="module" src="js/pages/ambiguity.js"></script>
+    <script type="module" src="js/pages/ambiguity-mobile.js"></script>
 </head>
 <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -39,7 +40,7 @@
         </div>
     </header>
 
-    <main id="main" class="page">
+    <main id="main" class="d-only page">
         <h1>Ambiguity explorer</h1>
         <p class="hero__lead">A grammar is <strong>ambiguous</strong> if some string has two different derivation trees.
             Enter a grammar and a string, and we search for two.</p>
@@ -77,8 +78,58 @@
 
         <p id="explain" class="callout" style="margin-top: var(--space-4)" aria-live="polite"></p>
     </main>
+    <main id="main-m" class="m-only">
+        <div class="m-page">
+            <div class="m-intro">
+                <h1>Ambiguity</h1>
+                <p>A grammar is ambiguous when one string has more than one parse tree. Both trees below derive the same string from the same grammar.</p>
+            </div>
+            <div class="m-card m-card--s">
+                <div class="m-row"><span class="m-row__k">Grammar</span><span class="m-row__v">E → E + E | E * E | id</span></div>
+                <div class="m-row"><span class="m-row__k">String</span><span class="m-row__v amb-m-str">id + id * id</span></div>
+            </div>
 
-    <footer class="site-footer">
+            <article class="m-card amb-m-tree">
+                <div class="amb-m-head"><span class="amb-m-chip amb-m-chip--1">1</span><span class="amb-m-title">+ at the root</span><span class="amb-m-group">id + (id * id)</span></div>
+                <div class="m-stage amb-m-stage"><svg id="amb-m-1" aria-hidden="true"></svg></div>
+                <p class="amb-m-note">The root uses E → E + E. The * is grouped first, lower in the tree, so with numbers 2 + 3 * 4 this tree means 2 + 12.</p>
+            </article>
+            <article class="m-card amb-m-tree">
+                <div class="amb-m-head"><span class="amb-m-chip amb-m-chip--2">2</span><span class="amb-m-title">* at the root</span><span class="amb-m-group">(id + id) * id</span></div>
+                <div class="m-stage amb-m-stage"><svg id="amb-m-2" aria-hidden="true"></svg></div>
+                <p class="amb-m-note">The root uses E → E * E. Now + is grouped first, so the same 2 + 3 * 4 would mean 5 * 4.</p>
+            </article>
+
+            <div class="m-card m-card--s amb-m-diff">
+                <div class="amb-m-diff__row amb-m-diff__head"><span>What differs</span><span>Tree 1</span><span>Tree 2</span></div>
+                <div class="amb-m-diff__row"><span>Root</span><span>E → E + E</span><span>E → E * E</span></div>
+                <div class="amb-m-diff__row"><span>Grouping</span><span>id + (id * id)</span><span>(id + id) * id</span></div>
+                <div class="amb-m-diff__row amb-m-diff__leaves"><span>Leaves</span><span>id + id * id</span><span>id + id * id</span></div>
+            </div>
+
+            <div class="m-intro amb-m-fix">
+                <span class="m-kicker">THE FIX</span>
+                <h2>One nonterminal per operator</h2>
+                <p>T handles *, and T only appears below E. So * always ends up deeper than +, and id + id * id has exactly one tree. The language stays the same.</p>
+            </div>
+            <article class="m-card">
+                <div class="amb-m-rules"><span>E → E + T | T</span><span>T → T * F | F</span><span>F → id</span></div>
+                <div class="m-stage amb-m-stage amb-m-stage--fix"><svg id="amb-m-fix" aria-hidden="true"></svg></div>
+                <p class="amb-m-note">Unambiguous. The builder replays this one on a loop.</p>
+            </article>
+
+            <div class="m-dock-wrap">
+                <div class="m-dock" role="group" aria-label="Step both trees">
+                    <button type="button" class="m-dock__btn" data-amb="back" aria-label="Step back"><svg viewBox="0 0 18 18" aria-hidden="true"><rect x="3.5" y="4" width="2.2" height="10" rx="1" fill="currentColor"/><path d="M14 4.5v9L7.5 9z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="m-dock__play" data-amb="play" aria-label="Play"><svg viewBox="0 0 22 22" aria-hidden="true"><path class="pp-tri" d="M7 4.5v13L17.5 11z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><rect class="pp-bar" x="5.5" y="4.5" width="4" height="13" rx="1.2" fill="currentColor"/><rect class="pp-bar" x="12.5" y="4.5" width="4" height="13" rx="1.2" fill="currentColor"/></svg></button>
+                    <button type="button" class="m-dock__btn" data-amb="forward" aria-label="Step forward"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4.5v9L10.5 9z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/><rect x="12.3" y="4" width="2.2" height="10" rx="1" fill="currentColor"/></svg></button>
+                    <span class="m-dock__info"><b id="amb-m-step">STEP 0 / 5</b><span>Both trees in sync</span></span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer d-only">
         Ambiguity of a context-free grammar is undecidable in general, so a search can only ever find a witness, never prove there is none.
     </footer>
 </body>

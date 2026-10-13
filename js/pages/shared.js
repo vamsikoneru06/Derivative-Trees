@@ -30,7 +30,7 @@ export function playWhenVisible(el, timeline, { loop = true, pauseMs = 2200, fro
         timeline.seek(from);
         timeline.play();
     };
-    timeline.on('end', () => {
+    const offEnd = timeline.on('end', () => {
         if (!loop) return;
         timer = setTimeout(() => {
             if (visible) restart();
@@ -48,7 +48,13 @@ export function playWhenVisible(el, timeline, { loop = true, pauseMs = 2200, fro
         }
     }, { threshold: 0.35 });
     observer.observe(el);
-    return { restart };
+    const stop = () => {
+        observer.disconnect();
+        clearTimeout(timer);
+        offEnd();
+        timeline.pause();
+    };
+    return { restart, stop };
 }
 
 /**
