@@ -225,7 +225,8 @@ function showAuto(autoplay) {
     const tl = mount(derivation, tree, { yield: true });
     tl.playTo(tl.stepEnd(0));
     if (autoplay) setTimeout(() => {
-        if (state.tl === tl && !tl.playing) tl.playTo(tl.stepEnd(stepCount()));
+        // Still on the root (the user has not stepped): play the whole derivation.
+        if (state.tl === tl && tl.time <= tl.stepEnd(0) + 1) tl.playTo(tl.stepEnd(stepCount()));
     }, 700);
     render();
 }
